@@ -931,6 +931,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const booking = await storage.createBooking(bookingData);
 
+      // Send notifications to Admin and Doctor
+      await storage.createSystemNotification({
+        type: 'new_booking',
+        title: 'New Appointment Booking',
+        message: `New appointment booked with ${doctor.firstName} ${doctor.lastName}`,
+        data: {
+          bookingId: booking.id,
+          patientName: booking.patientName,
+          doctorName: `${doctor.firstName} ${doctor.lastName}`,
+          appointmentDate: appointmentDateTime,
+          consultationType: booking.consultationType,
+          reason: booking.reason
+        },
+        targetSystem: 'admin',
+        isRead: false,
+        createdAt: new Date()
+      });
+
+      await storage.createSystemNotification({
+        type: 'new_booking',
+        title: 'New Patient Appointment',
+        message: `${booking.patientName} has booked an appointment`,
+        data: {
+          bookingId: booking.id,
+          patientName: booking.patientName,
+          patientEmail: booking.patientEmail,
+          appointmentDate: appointmentDateTime,
+          consultationType: booking.consultationType,
+          reason: booking.reason
+        },
+        targetSystem: 'doctor',
+        targetUserId: doctor.userId,
+        isRead: false,
+        createdAt: new Date()
+      });
+
       // Log booking activity
       await storage.logActivity({
         userId: patientId,
@@ -1040,6 +1076,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update booking status in storage
       const updatedBooking = await storage.updateBookingStatus(bookingId, status);
       
+      // Send notification to admin when doctor confirms/rejects appointment
+      if (status === 'confirmed' || status === 'rejected') {
+        await storage.createSystemNotification({
+          type: 'booking_status_updated',
+          title: `Appointment ${status}`,
+          message: `Dr. ${doctor?.firstName} ${doctor?.lastName} has ${status} appointment with ${booking.patientName}`,
+          data: {
+            bookingId: booking.id,
+            doctorName: `${doctor?.firstName} ${doctor?.lastName}`,
+            patientName: booking.patientName,
+            appointmentDate: booking.appointmentDate,
+            oldStatus: booking.status,
+            newStatus: status
+          },
+          targetSystem: 'admin',
+          isRead: false,
+          createdAt: new Date()
+        });
+      }
+      
       // Log status change
       await storage.logActivity({
         userId: booking.doctorId,
@@ -1060,6 +1116,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating booking status:", error);
       res.status(500).json({ error: "Failed to update booking status" });
+    }
+  });
+
+  // Doctor availability API with real-time booking status
+  app.get("/api/doctor/availability/:doctorId/:date", async (req, res) => {
+    try {
+      const { doctorId, date } = req.params;
+      
+      // Get all bookings for this doctor on this date
+      const bookings = await storage.getBookingsByDoctor(doctorId);
+      const dateBookings = bookings.filter(booking => {
+        const bookingDate = new Date(booking.appointmentDate).toISOString().split('T')[0];
+        return bookingDate === date && (booking.status === 'confirmed' || booking.status === 'pending');
+      });
+      
+      // Generate time slots from 8 AM to 6 PM (30-minute intervals)
+      const timeSlots = [];
+      for (let hour = 8; hour <= 18; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          if (hour === 18 && minute > 0) break; // Stop at 6:00 PM
+          
+          const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          
+          // Check if this time slot is booked
+          const bookedSlot = dateBookings.find(booking => {
+            const bookingTime = new Date(booking.appointmentDate);
+            const bookingHour = bookingTime.getHours();
+            const bookingMinute = bookingTime.getMinutes();
+            return bookingHour === hour && bookingMinute === minute;
+          });
+          
+          timeSlots.push({
+            time,
+            isBooked: !!bookedSlot,
+            isAvailable: !bookedSlot,
+            status: bookedSlot ? (bookedSlot.status === 'confirmed' ? 'confirmed' : 'pending') : 'available',
+            bookingId: bookedSlot?.id || null
+          });
+        }
+      }
+      
+      res.json(timeSlots);
+    } catch (error) {
+      console.error("Error fetching availability:", error);
+      res.status(500).json({ error: "Failed to fetch availability" });
     }
   });
 

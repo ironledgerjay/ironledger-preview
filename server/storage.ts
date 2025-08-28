@@ -39,6 +39,7 @@ export interface IStorage {
   getBookingsByPatient(patientId: string): Promise<Booking[]>;
   getBookingsByDoctor(doctorId: string): Promise<Booking[]>;
   createBooking(booking: InsertBooking): Promise<Booking>;
+  updateBookingStatus(bookingId: string, status: string): Promise<Booking>;
 
   // Payments
   createPayment(payment: InsertPayment): Promise<Payment>;
@@ -296,6 +297,21 @@ export class MemStorage implements IStorage {
     };
     this.bookings.set(id, booking);
     return booking;
+  }
+
+  async updateBookingStatus(bookingId: string, status: string): Promise<Booking> {
+    const booking = this.bookings.get(bookingId);
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    const updatedBooking: Booking = {
+      ...booking,
+      status: status as any
+    };
+    
+    this.bookings.set(bookingId, updatedBooking);
+    return updatedBooking;
   }
 
   // Payments

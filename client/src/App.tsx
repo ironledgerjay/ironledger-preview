@@ -12,6 +12,8 @@ import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import Membership from "@/pages/Membership";
 import SearchResults from "@/pages/SearchResults";
+import DoctorSearch from "@/pages/DoctorSearch";
+import DoctorPortal from "@/pages/DoctorPortal";
 import Emergency from "@/pages/Emergency";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -31,6 +33,8 @@ function Router() {
       <Route path="/contact" component={Contact} />
       <Route path="/membership" component={Membership} />
       <Route path="/search" component={SearchResults} />
+      <Route path="/doctors" component={DoctorSearch} />
+      <Route path="/doctor-portal" component={DoctorPortal} />
       <Route path="/emergency" component={Emergency} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />

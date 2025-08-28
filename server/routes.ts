@@ -642,6 +642,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Doctor search API - Returns verified doctors based on filters
+  app.get("/api/doctors", async (req, res) => {
+    try {
+      const { name, specialty, province, city } = req.query;
+      
+      const allDoctors = await storage.getDoctors({});
+      const verifiedDoctors = allDoctors.filter(doctor => doctor.isVerified);
+      
+      let filteredDoctors = verifiedDoctors;
+      
+      // Apply filters
+      if (name) {
+        const searchName = (name as string).toLowerCase();
+        filteredDoctors = filteredDoctors.filter(doctor => 
+          `${doctor.firstName} ${doctor.lastName}`.toLowerCase().includes(searchName)
+        );
+      }
+      
+      if (specialty) {
+        filteredDoctors = filteredDoctors.filter(doctor => 
+          doctor.specialty === specialty
+        );
+      }
+      
+      if (province) {
+        filteredDoctors = filteredDoctors.filter(doctor => 
+          doctor.province === province
+        );
+      }
+      
+      if (city) {
+        const searchCity = (city as string).toLowerCase();
+        filteredDoctors = filteredDoctors.filter(doctor => 
+          doctor.city?.toLowerCase().includes(searchCity)
+        );
+      }
+      
+      res.json(filteredDoctors);
+    } catch (error) {
+      console.error("Error fetching doctors:", error);
+      res.status(500).json({ error: "Failed to fetch doctors" });
+    }
+  });
+
+  // Doctor portal profile API
+  app.get("/api/doctor/profile", async (req, res) => {
+    try {
+      // In a real app, get doctor ID from authenticated session
+      const doctorId = req.query.doctorId || '8fb4ade4-e06b-41d4-89ee-8baddc6449ef';
+      
+      const doctor = await storage.getDoctor(doctorId);
+      if (!doctor) {
+        return res.status(404).json({ error: "Doctor not found" });
+      }
+      
+      // Get additional metrics
+      const doctorBookings = await storage.getBookingsByDoctor(doctorId);
+      
+      const profile = {
+        ...doctor,
+        totalPatients: new Set(doctorBookings.map(b => b.patientId)).size,
+        totalAppointments: doctorBookings.length,
+        pendingAppointments: doctorBookings.filter(b => b.status === 'pending').length,
+      };
+      
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching doctor profile:", error);
+      res.status(500).json({ error: "Failed to fetch doctor profile" });
+    }
+  });
+
+  // Doctor appointments API
+  app.get("/api/doctor/appointments", async (req, res) => {
+    try {
+      const doctorId = req.query.doctorId || '8fb4ade4-e06b-41d4-89ee-8baddc6449ef';
+      
+      const doctorBookings = (await storage.getBookingsByDoctor(doctorId))
+        .map(booking => ({
+          id: booking.id,
+          patientName: booking.patientName || 'Patient',
+          patientEmail: booking.patientEmail || 'patient@example.com',
+          appointmentDate: booking.appointmentDate,
+          status: booking.status,
+          reason: booking.reason || 'General consultation',
+          consultationType: booking.consultationType || 'in-person'
+        }))
+        .sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
+      
+      res.json(doctorBookings);
+    } catch (error) {
+      console.error("Error fetching doctor appointments:", error);
+      res.status(500).json({ error: "Failed to fetch appointments" });
+    }
+  });
+
+  // Update appointment status API  
+  app.patch("/api/doctor/appointments/:appointmentId", async (req, res) => {
+    try {
+      const { appointmentId } = req.params;
+      const { status } = req.body;
+      
+      if (!['confirmed', 'cancelled'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+      
+      const booking = await storage.getBooking(appointmentId);
+      if (!booking) {
+        return res.status(404).json({ error: "Appointment not found" });
+      }
+      
+      await storage.updateBooking(appointmentId, { ...booking, status });
+      
+      res.json({ success: true, message: `Appointment ${status}` });
+    } catch (error) {
+      console.error("Error updating appointment:", error);
+      res.status(500).json({ error: "Failed to update appointment" });
+    }
+  });
+
+  // Doctor analytics API
+  app.get("/api/doctor/analytics", async (req, res) => {
+    try {
+      const doctorId = req.query.doctorId || '8fb4ade4-e06b-41d4-89ee-8baddc6449ef';
+      
+      const doctor = await storage.getDoctor(doctorId);
+      const doctorBookings = await storage.getBookingsByDoctor(doctorId);
+      
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
+      const thisMonthBookings = doctorBookings.filter(booking => {
+        const bookingDate = new Date(booking.appointmentDate);
+        return bookingDate.getMonth() === currentMonth && bookingDate.getFullYear() === currentYear;
+      });
+      
+      const consultationFee = parseFloat(doctor?.consultationFee || '0');
+      const monthlyRevenue = thisMonthBookings
+        .filter(booking => booking.status === 'confirmed')
+        .length * consultationFee;
+      
+      const analytics = {
+        monthlyRevenue,
+        totalPatients: new Set(doctorBookings.map(b => b.patientId)).size,
+        appointmentsThisMonth: thisMonthBookings.length,
+        averageRating: parseFloat(doctor?.rating || '0'),
+        popularTimeSlots: [
+          { time: '09:00', count: 12 },
+          { time: '14:00', count: 8 },
+          { time: '16:00', count: 15 }
+        ],
+        revenueByMonth: [
+          { month: 'Jan', revenue: 5200 },
+          { month: 'Feb', revenue: 6800 },
+          { month: 'Mar', revenue: monthlyRevenue }
+        ]
+      };
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching doctor analytics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  // Admin impersonation API - Approve/decline appointments on behalf of doctors
+  app.patch("/api/admin/appointments/:appointmentId/impersonate", async (req, res) => {
+    try {
+      const { appointmentId } = req.params;
+      const { status, adminReason } = req.body;
+      
+      if (!['confirmed', 'cancelled'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+      
+      const booking = await storage.getBooking(appointmentId);
+      if (!booking) {
+        return res.status(404).json({ error: "Appointment not found" });
+      }
+      
+      await storage.updateBooking(appointmentId, { ...booking, status });
+      
+      // Log admin impersonation action
+      await storage.logActivity({
+        userId: booking.doctorId,
+        userType: 'admin',
+        action: 'admin_appointment_impersonation',
+        page: 'admin_appointments',
+        details: {
+          appointmentId,
+          originalStatus: booking.status,
+          newStatus: status,
+          adminReason: adminReason || 'Admin impersonation',
+          patientName: booking.patientName,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'admin_crm',
+      });
+      
+      res.json({ 
+        success: true, 
+        message: `Appointment ${status} by admin impersonation`,
+        appointmentId 
+      });
+    } catch (error) {
+      console.error("Error with admin appointment impersonation:", error);
+      res.status(500).json({ error: "Failed to process admin action" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

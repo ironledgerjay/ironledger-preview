@@ -505,6 +505,29 @@ export class MemStorage implements IStorage {
     this.doctors.set(doctorId, updatedDoctor);
     return updatedDoctor;
   }
+
+  async getBooking(bookingId: string): Promise<Booking | undefined> {
+    return this.bookings.get(bookingId);
+  }
+
+  async updateBooking(bookingId: string, updateData: any): Promise<Booking> {
+    const existingBooking = this.bookings.get(bookingId);
+    if (!existingBooking) {
+      throw new Error('Booking not found');
+    }
+    
+    const updatedBooking = { ...existingBooking, ...updateData };
+    this.bookings.set(bookingId, updatedBooking);
+    return updatedBooking;
+  }
+
+  async getBookingsByDoctor(doctorId: string): Promise<Booking[]> {
+    return Array.from(this.bookings.values()).filter(booking => booking.doctorId === doctorId);
+  }
+
+  async getBookingsByPatient(patientId: string): Promise<Booking[]> {
+    return Array.from(this.bookings.values()).filter(booking => booking.patientId === patientId);
+  }
 }
 
 export const storage = new MemStorage();

@@ -1,0 +1,24 @@
+{
+  "scripts": {
+    "dev": "NODE_ENV=development tsx server/index.ts",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "tsc --project tsconfig.server.json",
+    "start": "NODE_ENV=production node dist/server/index.js",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
+    "type-check": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx server/migrations/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:health": "tsx -e \"import('./server/health').then(h => h.readinessCheck({}, { status: (c) => ({ json: (d) => console.log('DB Health:', d) }) }))\"",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "security:audit": "npm audit --audit-level moderate",
+    "security:check": "npm run security:audit && npm run lint",
+    "deploy:check": "npm run type-check && npm run security:check && npm run test",
+    "deploy:build": "npm run deploy:check && npm run build",
+    "postinstall": "npm run db:generate"
+  }
+}

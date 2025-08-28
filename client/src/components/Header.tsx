@@ -21,6 +21,7 @@ export default function Header() {
     { name: 'Emergency', href: '/emergency' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
+    { name: 'Admin CRM', href: 'https://admin-crm-ironledgermedma.replit.app/', external: true },
   ];
 
   return (
@@ -40,17 +41,29 @@ export default function Header() {
             <NavigationMenuList>
               {navigation.map((item) => (
                 <NavigationMenuItem key={item.name}>
-                  <Link 
-                    href={item.href}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      location === item.href
-                        ? 'text-primary bg-primary/10'
-                        : 'text-muted-foreground hover:text-primary'
-                    }`}
-                    data-testid={`link-nav-${item.name.toLowerCase().replace(' ', '-')}`}
-                  >
-                    {item.name}
-                  </Link>
+                  {item.external ? (
+                    <a 
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 rounded-md text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
+                      data-testid={`link-nav-${item.name.toLowerCase().replace(' ', '-')}`}
+                    >
+                      {item.name}
+                    </a>
+                  ) : (
+                    <Link 
+                      href={item.href}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        location === item.href
+                          ? 'text-primary bg-primary/10'
+                          : 'text-muted-foreground hover:text-primary'
+                      }`}
+                      data-testid={`link-nav-${item.name.toLowerCase().replace(' ', '-')}`}
+                    >
+                      {item.name}
+                    </Link>
+                  )}
                 </NavigationMenuItem>
               ))}
             </NavigationMenuList>
@@ -105,19 +118,33 @@ export default function Header() {
           <div className="md:hidden py-4 border-t border-border" data-testid="nav-mobile-menu">
             <div className="space-y-2">
               {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                    location === item.href
-                      ? 'text-primary bg-primary/10'
-                      : 'text-muted-foreground hover:text-primary'
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                  data-testid={`link-mobile-${item.name.toLowerCase().replace(' ', '-')}`}
-                >
-                  {item.name}
-                </Link>
+                item.external ? (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block px-3 py-2 rounded-md text-base font-medium transition-colors text-muted-foreground hover:text-primary"
+                    onClick={() => setMobileMenuOpen(false)}
+                    data-testid={`link-mobile-${item.name.toLowerCase().replace(' ', '-')}`}
+                  >
+                    {item.name}
+                  </a>
+                ) : (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      location === item.href
+                        ? 'text-primary bg-primary/10'
+                        : 'text-muted-foreground hover:text-primary'
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    data-testid={`link-mobile-${item.name.toLowerCase().replace(' ', '-')}`}
+                  >
+                    {item.name}
+                  </Link>
+                )
               ))}
             </div>
           </div>

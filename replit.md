@@ -49,8 +49,7 @@ PayFast integration handles secure payment processing for membership upgrades an
 - **Health Endpoints**: /health, /health/ready, /health/live endpoints
 - **System Monitoring**: Memory usage, database connectivity, API performance
 - **Real-time Statistics**: Live platform statistics and metrics
-- **Admin Dashboard**: Complete administrative interface at /admin
-- **API Status Indicators**: Real-time connection status monitoring
+- **External Admin CRM**: Administrative interface accessible at https://admin-crm-ironledgermedma.replit.app/
 
 ## Database & Migrations
 - **Automated Migrations**: Database schema migrations with Drizzle
@@ -60,7 +59,6 @@ PayFast integration handles secure payment processing for membership upgrades an
 
 ## Error Management
 - **Error Boundaries**: React error boundaries with fallback UI
-- **Async Error Handling**: Comprehensive error handling hooks
 - **Production Logging**: Error reporting and logging infrastructure
 - **User Feedback**: Toast notifications and error messaging
 
@@ -68,4 +66,3 @@ PayFast integration handles secure payment processing for membership upgrades an
 - **Environment Validation**: Strict environment variable validation
 - **Production Scripts**: Automated deployment and build scripts
 - **Feature Flags**: Configurable feature toggles
-- **Maintenance Mode**: Built-in maintenance mode support

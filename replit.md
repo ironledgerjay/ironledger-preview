@@ -26,7 +26,7 @@ PayFast integration handles secure payment processing for membership upgrades an
 # External Dependencies
 
 - **Supabase**: Authentication service and user management
-- **PayFast**: Payment gateway for South African transactions
+- **PayFast**: Primary payment gateway for South African transactions with full webhook integration and admin tracking
 - **Neon Database**: PostgreSQL hosting and database management
 - **Radix UI**: Headless UI component primitives
 - **Tailwind CSS**: Utility-first CSS framework

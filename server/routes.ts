@@ -274,16 +274,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 2. Update payment status in database
       // 3. Update user membership or booking status
       
-      const { pf_payment_id, payment_status, custom_str1 } = req.body;
+      const { pf_payment_id, payment_status, custom_str1, amount_gross, name_first, name_last } = req.body;
       
+      // Log PayFast webhook activity for admin tracking
+      await storage.logActivity({
+        action: 'payfast_webhook_received',
+        page: 'payfast_webhook',
+        details: {
+          paymentStatus: payment_status,
+          paymentId: pf_payment_id,
+          amount: amount_gross,
+          paymentType: custom_str1,
+          customerName: `${name_first} ${name_last}`,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'payfast_system',
+      });
+
       if (payment_status === 'COMPLETE') {
-        await storage.updatePaymentStatus(pf_payment_id, 'completed');
+        await storage.updatePaymentStatus(pf_payment_id, 'COMPLETE');
         
+        // Create notification for admin dashboard
+        await storage.createSystemNotification({
+          type: 'payment_completed',
+          title: 'PayFast Payment Completed',
+          message: `Payment of R${amount_gross} completed successfully via PayFast for ${custom_str1}.`,
+          targetSystem: 'main_site',
+          metadata: JSON.stringify({
+            paymentId: pf_payment_id,
+            amount: amount_gross,
+            paymentMethod: 'payfast',
+            paymentType: custom_str1,
+            customerName: `${name_first} ${name_last}`,
+          }),
+        });
+
         // Update membership or booking based on payment type
         if (custom_str1 === 'membership') {
           // Update user to premium membership
           // This would require additional database logic
         }
+      } else if (payment_status === 'FAILED') {
+        await storage.updatePaymentStatus(pf_payment_id, 'FAILED');
+        
+        // Log failed payment for admin tracking
+        await storage.createSystemNotification({
+          type: 'payment_failed',
+          title: 'PayFast Payment Failed',
+          message: `Payment of R${amount_gross} failed via PayFast for ${custom_str1}.`,
+          targetSystem: 'main_site',
+          metadata: JSON.stringify({
+            paymentId: pf_payment_id,
+            amount: amount_gross,
+            paymentMethod: 'payfast',
+            paymentType: custom_str1,
+            customerName: `${name_first} ${name_last}`,
+          }),
+        });
       }
       
       res.status(200).send('OK');

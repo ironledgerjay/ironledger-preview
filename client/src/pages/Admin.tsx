@@ -455,6 +455,11 @@ export default function Admin() {
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {payment.user ? `${payment.user.firstName} ${payment.user.lastName}` : 'Unknown User'}
                     </p>
+                    {payment.payFastPaymentId && (
+                      <p className="text-xs text-gray-500">
+                        PayFast ID: {payment.payFastPaymentId}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge variant={payment.status === 'COMPLETE' ? 'default' : 'destructive'}>

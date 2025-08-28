@@ -866,7 +866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { doctorId } = req.params;
       console.log(`Fetching doctor with ID: ${doctorId}`);
       
-      // Try to get doctor by doctor ID first
+      // Get doctor by doctor ID
       let doctor = await storage.getDoctor(doctorId);
       
       // If not found by doctor ID, try to get by user ID from all doctors

@@ -98,7 +98,7 @@ export default function DoctorSearch() {
             <CardDescription>Find doctors by name, specialty, province, city, or zip code</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
               <Input
                 placeholder="Doctor name..."
                 value={searchFilters.name}
@@ -138,10 +138,11 @@ export default function DoctorSearch() {
               />
 
               <Input
-                placeholder="Zip code..."
+                placeholder="Zip/Postal code..."
                 value={searchFilters.zipCode}
                 onChange={(e) => setSearchFilters(prev => ({ ...prev, zipCode: e.target.value }))}
                 data-testid="input-zip-code"
+                className="border-blue-200 focus:border-blue-500"
               />
             </div>
           </CardContent>

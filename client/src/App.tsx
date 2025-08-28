@@ -18,6 +18,9 @@ import Signup from "@/pages/Signup";
 import PaymentSuccess from "@/pages/PaymentSuccess";
 import PaymentCancelled from "@/pages/PaymentCancelled";
 import VerificationPending from "@/pages/VerificationPending";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
+import Admin from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -34,10 +37,9 @@ function Router() {
       <Route path="/verification-pending" component={VerificationPending} />
       <Route path="/payment/success" component={PaymentSuccess} />
       <Route path="/payment/cancelled" component={PaymentCancelled} />
-      <Route path="/admin" component={() => {
-        window.location.href = 'https://admin-crm-ironledgermedma.replit.app/';
-        return <div>Redirecting to admin...</div>;
-      }} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
   );

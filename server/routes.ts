@@ -429,6 +429,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get unverified doctors pending approval for CRM
+  app.get("/api/crm/doctors/pending", async (req, res) => {
+    try {
+      const allDoctors = await storage.getDoctors({});
+      const pendingDoctors = allDoctors.filter(doctor => !doctor.isVerified);
+      res.json(pendingDoctors);
+    } catch (error) {
+      console.error("Error fetching pending doctors for CRM:", error);
+      res.status(500).json({ error: "Failed to fetch pending doctors" });
+    }
+  });
+
+  // Approve/verify a doctor (CRM action)
+  app.patch("/api/crm/doctors/:doctorId/verify", async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const { isVerified, notes } = req.body;
+      
+      const doctor = await storage.getDoctor(doctorId);
+      if (!doctor) {
+        return res.status(404).json({ error: "Doctor not found" });
+      }
+
+      // Log the CRM action
+      await storage.logActivity({
+        userId: doctor.userId,
+        userType: 'admin',
+        action: isVerified ? 'doctor_approved' : 'doctor_rejected',
+        page: 'admin_crm',
+        details: {
+          doctorId: doctorId,
+          adminNotes: notes || null,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'admin_crm',
+      });
+
+      // Create notification for the doctor
+      await storage.createSystemNotification({
+        type: isVerified ? 'doctor_approved' : 'doctor_rejected',
+        title: isVerified ? 'Account Approved' : 'Account Needs Review',
+        message: isVerified 
+          ? `Congratulations! Your doctor account has been approved and is now active.`
+          : `Your doctor account requires additional information. Please check your email for details.`,
+        targetSystem: 'main_site',
+        metadata: JSON.stringify({
+          doctorId,
+          userId: doctor.userId,
+          adminAction: true,
+          notes: notes || null,
+        }),
+      });
+
+      res.json({ 
+        success: true, 
+        message: `Doctor ${isVerified ? 'approved' : 'rejected'} successfully`,
+        doctorId,
+        doctor: doctor
+      });
+    } catch (error) {
+      console.error("Error updating doctor verification:", error);
+      res.status(500).json({ error: "Failed to update doctor verification" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

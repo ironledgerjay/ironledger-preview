@@ -54,6 +54,9 @@ PayFast integration handles secure payment processing for membership upgrades an
 - **Activity Tracking**: Comprehensive logging of user actions and system events for CRM monitoring
 - **Universal Back Navigation**: Smart back button component with browser history integration and fallback paths
 - **Real-time User Tracking**: Automatic page view logging and user action tracking across all major pages
+- **Doctor Registration CRM Integration**: Fixed 404 errors and added comprehensive CRM endpoints for doctor approvals
+- **Pending Doctor Approval System**: Created /api/crm/doctors/pending endpoint for admin oversight of unverified doctors
+- **Verification Workflow**: Added /api/crm/doctors/:id/verify endpoint for admin approval/rejection actions
 
 ## Database & Migrations
 - **Automated Migrations**: Database schema migrations with Drizzle

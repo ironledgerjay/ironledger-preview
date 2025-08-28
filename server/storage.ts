@@ -96,8 +96,8 @@ export class MemStorage implements IStorage {
     // Create mock doctors for each province
     const mockDoctors = [
       {
-        id: randomUUID(),
-        userId: randomUUID(),
+        id: 'doctor-sarah-mthembu',
+        userId: 'user-sarah-mthembu',
         firstName: 'Sarah',
         lastName: 'Mthembu',
         specialty: 'Cardiology',
@@ -113,8 +113,8 @@ export class MemStorage implements IStorage {
         consultationFee: '850.00',
       },
       {
-        id: randomUUID(),
-        userId: randomUUID(),
+        id: 'doctor-michael-van-der-merwe',
+        userId: 'user-michael-van-der-merwe',
         firstName: 'Michael',
         lastName: 'Van Der Merwe',
         specialty: 'General Practice',
@@ -130,8 +130,8 @@ export class MemStorage implements IStorage {
         consultationFee: '650.00',
       },
       {
-        id: randomUUID(),
-        userId: randomUUID(),
+        id: 'doctor-nomsa-dlamini',
+        userId: 'user-nomsa-dlamini',
         firstName: 'Nomsa',
         lastName: 'Dlamini',
         specialty: 'Pediatrics',

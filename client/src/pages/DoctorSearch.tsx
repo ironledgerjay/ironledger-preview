@@ -111,7 +111,7 @@ export default function DoctorSearch() {
                   <SelectValue placeholder="Select specialty" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Specialties</SelectItem>
+                  <SelectItem value="all">All Specialties</SelectItem>
                   {specialties.map(specialty => (
                     <SelectItem key={specialty} value={specialty}>{specialty}</SelectItem>
                   ))}
@@ -123,7 +123,7 @@ export default function DoctorSearch() {
                   <SelectValue placeholder="Select province" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Provinces</SelectItem>
+                  <SelectItem value="all">All Provinces</SelectItem>
                   {provinces.map(province => (
                     <SelectItem key={province} value={province}>{province}</SelectItem>
                   ))}

@@ -5,11 +5,16 @@ import Footer from '@/components/Footer';
 import MembershipPlans from '@/components/MembershipPlans';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { usePayFast } from '@/hooks/usePayFast';
+import { useToast } from '@/hooks/use-toast';
 import { Check, X, Star, Shield, CreditCard, Users } from 'lucide-react';
 
 export default function Membership() {
   const { user } = useAuth();
+  const { generatePaymentURL } = usePayFast();
+  const { toast } = useToast();
   
   // Mock user membership data - in real app, this would come from the API
   const { data: membershipData } = useQuery({

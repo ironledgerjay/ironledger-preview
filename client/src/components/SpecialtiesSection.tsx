@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Link } from 'wouter';
 import { 
   Heart, 
   Brain, 
@@ -144,12 +145,16 @@ export default function SpecialtiesSection({ onSpecialtySelect }: SpecialtiesSec
           </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
-              View All Specialties →
-            </button>
-            <button className="border border-teal-600 text-teal-600 hover:bg-teal-50 px-6 py-3 rounded-lg font-medium transition-colors">
-              Request New Specialty
-            </button>
+            <Link href="/doctors">
+              <button className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                View All Specialties →
+              </button>
+            </Link>
+            <Link href="/contact">
+              <button className="border border-teal-600 text-teal-600 hover:bg-teal-50 px-6 py-3 rounded-lg font-medium transition-colors">
+                Request New Specialty
+              </button>
+            </Link>
           </div>
           
           {/* Bottom Stats */}

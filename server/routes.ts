@@ -860,6 +860,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Individual doctor API endpoint
+  app.get("/api/doctor/:doctorId", async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const doctor = await storage.getDoctor(doctorId);
+      
+      if (!doctor) {
+        return res.status(404).json({ error: "Doctor not found" });
+      }
+      
+      res.json(doctor);
+    } catch (error) {
+      console.error("Error fetching doctor:", error);
+      res.status(500).json({ error: "Failed to fetch doctor" });
+    }
+  });
+
+  // Create booking API
+  app.post("/api/bookings", async (req, res) => {
+    try {
+      const {
+        patientId,
+        doctorId,
+        patientName,
+        patientEmail,
+        patientPhone,
+        appointmentDateTime,
+        reason,
+        consultationType,
+        bookingFee
+      } = req.body;
+
+      // Validate required fields
+      if (!patientId || !doctorId || !patientName || !patientEmail || !appointmentDateTime || !reason) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Check if doctor exists
+      const doctor = await storage.getDoctor(doctorId);
+      if (!doctor) {
+        return res.status(404).json({ error: "Doctor not found" });
+      }
+
+      // Create booking
+      const bookingData = {
+        patientId,
+        doctorId,
+        appointmentDate: appointmentDateTime,
+        status: 'pending' as const,
+        patientName,
+        patientEmail,
+        patientPhone: patientPhone || null,
+        reason,
+        consultationType: consultationType || 'in-person',
+        bookingFee: bookingFee || 0,
+      };
+
+      const booking = await storage.createBooking(bookingData);
+
+      // Log booking activity
+      await storage.logActivity({
+        userId: patientId,
+        userType: 'patient',
+        action: 'appointment_booked',
+        page: 'book_appointment',
+        details: {
+          bookingId: booking.id,
+          doctorId,
+          doctorName: `${doctor.firstName} ${doctor.lastName}`,
+          appointmentDate: appointmentDateTime,
+          consultationType,
+          bookingFee,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'main_site',
+      });
+
+      res.status(201).json({ bookingId: booking.id, message: "Booking created successfully" });
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      res.status(500).json({ error: "Failed to create booking" });
+    }
+  });
+
+  // Get user membership information
+  app.get("/api/user/membership", async (req, res) => {
+    try {
+      // In a real app, get user ID from authenticated session
+      // For demo purposes, return mock membership data
+      const membership = {
+        type: 'basic', // or 'premium'
+        expiresAt: null,
+        benefits: ['Basic booking access', 'R10 booking fees apply']
+      };
+      
+      res.json(membership);
+    } catch (error) {
+      console.error("Error fetching membership:", error);
+      res.status(500).json({ error: "Failed to fetch membership" });
+    }
+  });
+
+  // Get doctor bookings for real-time portal updates
+  app.get("/api/doctor/bookings/:doctorId", async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const bookings = await storage.getBookingsByDoctor(doctorId);
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching doctor bookings:", error);
+      res.status(500).json({ error: "Failed to fetch bookings" });
+    }
+  });
+
+  // Update booking status
+  app.put("/api/bookings/:bookingId/status", async (req, res) => {
+    try {
+      const { bookingId } = req.params;
+      const { status } = req.body;
+
+      const booking = await storage.getBooking(bookingId);
+      if (!booking) {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+
+      // Update booking status in storage
+      const updatedBooking = await storage.updateBookingStatus(bookingId, status);
+      
+      // Log status change
+      await storage.logActivity({
+        userId: booking.doctorId,
+        userType: 'doctor',
+        action: 'booking_status_updated',
+        page: 'doctor_portal',
+        details: {
+          bookingId,
+          oldStatus: booking.status,
+          newStatus: status,
+          patientName: booking.patientName,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'doctor_portal',
+      });
+
+      res.json(updatedBooking);
+    } catch (error) {
+      console.error("Error updating booking status:", error);
+      res.status(500).json({ error: "Failed to update booking status" });
+    }
+  });
+
+  // PayFast payment success callback
+  app.post("/api/payfast/success", async (req, res) => {
+    try {
+      const { custom_str1, payment_status } = req.body;
+      
+      if (payment_status === 'COMPLETE' && custom_str1) {
+        // Process the booking after successful payment
+        const bookingData = JSON.parse(custom_str1);
+        const booking = await storage.createBooking(bookingData);
+        
+        // Log successful payment and booking
+        await storage.logActivity({
+          userId: bookingData.patientId,
+          userType: 'patient',
+          action: 'payment_successful_booking_created',
+          page: 'payment_callback',
+          details: {
+            bookingId: booking.id,
+            paymentAmount: bookingData.bookingFee,
+            timestamp: new Date().toISOString(),
+          },
+          source: 'payfast_callback',
+        });
+      }
+      
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error processing PayFast success:", error);
+      res.status(500).json({ error: "Payment processing failed" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

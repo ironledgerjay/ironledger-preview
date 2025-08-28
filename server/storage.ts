@@ -33,6 +33,7 @@ export interface IStorage {
   getDoctorByUserId(userId: string): Promise<Doctor | undefined>;
   getDoctors(filters: { province?: string; specialty?: string; city?: string }): Promise<Doctor[]>;
   createDoctor(doctor: InsertDoctor): Promise<Doctor>;
+  updateDoctorVerification(doctorId: string, isVerified: boolean): Promise<Doctor>;
 
   // Bookings
   getBooking(id: string): Promise<Booking | undefined>;
@@ -269,6 +270,21 @@ export class MemStorage implements IStorage {
     };
     this.doctors.set(id, doctor);
     return doctor;
+  }
+
+  async updateDoctorVerification(doctorId: string, isVerified: boolean): Promise<Doctor> {
+    const doctor = this.doctors.get(doctorId);
+    if (!doctor) {
+      throw new Error('Doctor not found');
+    }
+
+    const updatedDoctor: Doctor = {
+      ...doctor,
+      isVerified
+    };
+    
+    this.doctors.set(doctorId, updatedDoctor);
+    return updatedDoctor;
   }
 
   // Bookings

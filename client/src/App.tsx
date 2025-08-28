@@ -25,6 +25,7 @@ import Privacy from "@/pages/Privacy";
 import Admin from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 import BookAppointment from "@/pages/BookAppointment";
+import DoctorSignup from "@/pages/DoctorSignup";
 
 function Router() {
   return (
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/search" component={SearchResults} />
       <Route path="/doctors" component={DoctorSearch} />
       <Route path="/doctor-portal" component={DoctorPortal} />
+      <Route path="/doctor-signup" component={DoctorSignup} />
       <Route path="/book/:doctorId" component={BookAppointment} />
       <Route path="/emergency" component={Emergency} />
       <Route path="/login" component={Login} />

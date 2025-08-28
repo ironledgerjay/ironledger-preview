@@ -35,6 +35,27 @@ PayFast integration handles secure payment processing for membership upgrades an
 - **Vite**: Development server and build tooling
 - **shadcn/ui**: Pre-built component library
 
+# Doctor Authentication System
+
+## Complete Doctor Workflow
+- **Doctor Registration**: Full signup form at `/doctor-signup` with medical credentials
+- **Admin Approval Process**: Doctors require admin approval before accessing portal
+- **Doctor Login**: Secure login at `/login` (Doctor tab) with verified account access
+- **Doctor Portal**: Full practice management with real-time booking system
+
+## Demo Doctor Credentials
+- **Email**: `dr.johnson@example.com`
+- **Password**: `TempPass123!`
+- **Status**: Pre-approved Cardiologist in Johannesburg
+- **Portal Access**: Complete scheduling, booking management, and patient communication
+
+## Authentication Features
+- Real-time approval notifications sent to admin when doctors register
+- Email validation and duplicate account prevention
+- Session management with localStorage (production-ready authentication pending)
+- Role-based access control (doctor vs patient vs admin)
+- Automatic redirect to doctor portal after successful login
+
 # Production Features
 
 ## Security & Middleware

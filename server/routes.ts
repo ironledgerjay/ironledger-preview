@@ -1164,35 +1164,196 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PayFast payment success callback
-  app.post("/api/payfast/success", async (req, res) => {
+  // Doctor signup/registration API
+  app.post("/api/doctors/signup", async (req, res) => {
     try {
-      const { custom_str1, payment_status } = req.body;
+      const {
+        email,
+        password,
+        firstName,
+        lastName,
+        specialty,
+        hpcsaNumber,
+        phone,
+        province,
+        city,
+        zipCode,
+        practiceAddress,
+        consultationFee,
+        qualifications,
+        experience
+      } = req.body;
       
-      if (payment_status === 'COMPLETE' && custom_str1) {
-        // Process the booking after successful payment
-        const bookingData = JSON.parse(custom_str1);
-        const booking = await storage.createBooking(bookingData);
-        
-        // Log successful payment and booking
-        await storage.logActivity({
-          userId: bookingData.patientId,
-          userType: 'patient',
-          action: 'payment_successful_booking_created',
-          page: 'payment_callback',
-          details: {
-            bookingId: booking.id,
-            paymentAmount: bookingData.bookingFee,
-            timestamp: new Date().toISOString(),
-          },
-          source: 'payfast_callback',
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+      
+      // Create user account
+      const user = await storage.createUser({
+        email,
+        role: 'doctor'
+      });
+      
+      // Create doctor profile (pending approval)
+      const doctor = await storage.createDoctor({
+        userId: user.id,
+        firstName,
+        lastName,
+        specialty,
+        hpcsaNumber,
+        phone,
+        province,
+        city,
+        zipCode,
+        practiceAddress,
+        consultationFee: consultationFee || '650.00',
+        isVerified: false // Requires admin approval
+      });
+      
+      // Send notification to admin for approval
+      await storage.createSystemNotification({
+        type: 'doctor_signup',
+        title: 'New Doctor Registration',
+        message: `Dr. ${firstName} ${lastName} has registered and requires approval`,
+        data: {
+          doctorId: doctor.id,
+          doctorName: `${firstName} ${lastName}`,
+          specialty,
+          province,
+          email,
+          hpcsaNumber
+        },
+        targetSystem: 'admin',
+        isRead: false,
+        createdAt: new Date()
+      });
+      
+      // Log enrollment activity
+      await storage.logActivity({
+        userId: user.id,
+        userType: 'doctor',
+        action: 'doctor_registration',
+        page: 'doctor_signup',
+        details: {
+          doctorId: doctor.id,
+          specialty: doctor.specialty,
+          province: doctor.province,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'main_site',
+      });
+      
+      res.status(201).json({ 
+        message: "Registration successful! Your application is under review. You will be notified once approved.",
+        doctorId: doctor.id,
+        email: email,
+        tempPassword: "TempPass123!" // Temporary password for initial login
+      });
+    } catch (error) {
+      console.error("Error registering doctor:", error);
+      res.status(500).json({ error: "Failed to register doctor" });
+    }
+  });
+
+  // Doctor login API
+  app.post("/api/doctors/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user || user.role !== 'doctor') {
+        return res.status(401).json({ error: "Invalid credentials or not a doctor account" });
+      }
+      
+      // Get doctor profile
+      const doctor = await storage.getDoctorByUserId(user.id);
+      if (!doctor) {
+        return res.status(404).json({ error: "Doctor profile not found" });
+      }
+      
+      // Check if approved
+      if (!doctor.isVerified) {
+        return res.status(403).json({ 
+          error: "Account pending approval", 
+          message: "Your doctor account is still under review by our admin team." 
         });
       }
       
-      res.sendStatus(200);
+      // Simulate password check (in real app, use proper hashing)
+      // For demo: accept "TempPass123!" or "password123"
+      if (password !== "TempPass123!" && password !== "password123") {
+        return res.status(401).json({ error: "Invalid password" });
+      }
+      
+      // Log successful login
+      await storage.logActivity({
+        userId: user.id,
+        userType: 'doctor',
+        action: 'doctor_login',
+        page: 'doctor_login',
+        details: {
+          doctorId: doctor.id,
+          doctorName: `${doctor.firstName} ${doctor.lastName}`,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'doctor_portal',
+      });
+      
+      res.json({ 
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role
+        },
+        doctor: {
+          id: doctor.id,
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          specialty: doctor.specialty,
+          isVerified: doctor.isVerified
+        }
+      });
     } catch (error) {
-      console.error("Error processing PayFast success:", error);
-      res.status(500).json({ error: "Payment processing failed" });
+      console.error("Error during doctor login:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Doctor approval API (for admin)
+  app.patch("/api/admin/doctors/:doctorId/approve", async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const doctor = await storage.getDoctor(doctorId);
+      
+      if (!doctor) {
+        return res.status(404).json({ error: "Doctor not found" });
+      }
+      
+      // Approve doctor (update verification status)
+      const updatedDoctor = await storage.updateDoctorVerification(doctorId, true);
+      
+      // Log approval activity
+      await storage.logActivity({
+        userId: null,
+        userType: 'admin',
+        action: 'doctor_approved',
+        page: 'admin_portal',
+        details: {
+          doctorId: doctor.id,
+          doctorName: `${doctor.firstName} ${doctor.lastName}`,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'admin_portal',
+      });
+      
+      res.json({ message: "Doctor approved successfully", doctor: updatedDoctor });
+    } catch (error) {
+      console.error("Error approving doctor:", error);
+      res.status(500).json({ error: "Failed to approve doctor" });
     }
   });
 

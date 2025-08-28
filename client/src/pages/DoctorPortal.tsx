@@ -4,7 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Users, Clock, CheckCircle, XCircle, BarChart3, Star, Phone, MapPin } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar, Users, Clock, CheckCircle, XCircle, BarChart3, Star, Phone, MapPin, Settings } from 'lucide-react';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { useToast } from '@/hooks/use-toast';
 
@@ -47,6 +51,16 @@ export default function DoctorPortal() {
   useActivityLogger('doctor_portal');
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [schedule, setSchedule] = useState({
+    monday: { start: "09:00", end: "17:00", available: true },
+    tuesday: { start: "09:00", end: "17:00", available: true },
+    wednesday: { start: "09:00", end: "17:00", available: true },
+    thursday: { start: "09:00", end: "17:00", available: true },
+    friday: { start: "09:00", end: "17:00", available: true },
+    saturday: { start: "09:00", end: "13:00", available: false },
+    sunday: { start: "09:00", end: "13:00", available: false }
+  });
 
   // Fetch doctor profile
   const { data: profile, isLoading: loadingProfile } = useQuery<DoctorProfile>({
@@ -91,6 +105,55 @@ export default function DoctorPortal() {
       });
     }
   };
+
+  // Schedule management functions
+  const handleScheduleChange = (day: string, field: string, value: any) => {
+    setSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [field]: value
+      }
+    }));
+  };
+
+  const saveSchedule = async () => {
+    try {
+      const response = await fetch('/api/doctor/schedule', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ schedule }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Schedule Updated",
+          description: "Your availability schedule has been saved successfully.",
+        });
+        setShowScheduleModal(false);
+      } else {
+        throw new Error('Failed to save schedule');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save schedule. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const days = [
+    { key: 'monday', label: 'Monday' },
+    { key: 'tuesday', label: 'Tuesday' },
+    { key: 'wednesday', label: 'Wednesday' },
+    { key: 'thursday', label: 'Thursday' },
+    { key: 'friday', label: 'Friday' },
+    { key: 'saturday', label: 'Saturday' },
+    { key: 'sunday', label: 'Sunday' }
+  ];
 
   if (loadingProfile) {
     return (
@@ -282,7 +345,10 @@ export default function DoctorPortal() {
                   <Clock className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                   <h3 className="text-lg font-medium mb-2">Schedule Management</h3>
                   <p className="text-gray-600 mb-4">Set your available hours and manage your appointment calendar.</p>
-                  <Button>Configure Schedule</Button>
+                  <Button onClick={() => setShowScheduleModal(true)} data-testid="button-configure-schedule">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configure Schedule
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -336,6 +402,80 @@ export default function DoctorPortal() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Schedule Configuration Modal */}
+      <Dialog open={showScheduleModal} onOpenChange={setShowScheduleModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Configure Your Schedule</DialogTitle>
+            <DialogDescription>
+              Set your available hours for each day of the week. Patients will only be able to book appointments during these hours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {days.map(({ key, label }) => (
+              <div key={key} className="flex items-center space-x-4 p-4 border rounded-lg">
+                <div className="w-20">
+                  <Label className="font-medium">{label}</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={schedule[key].available}
+                    onCheckedChange={(checked) => 
+                      handleScheduleChange(key, 'available', checked)
+                    }
+                    data-testid={`checkbox-${key}-available`}
+                  />
+                  <Label className="text-sm">Available</Label>
+                </div>
+                {schedule[key].available && (
+                  <>
+                    <div className="flex items-center space-x-2">
+                      <Label className="text-sm">From:</Label>
+                      <Input
+                        type="time"
+                        value={schedule[key].start}
+                        onChange={(e) => 
+                          handleScheduleChange(key, 'start', e.target.value)
+                        }
+                        className="w-24"
+                        data-testid={`input-${key}-start`}
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Label className="text-sm">To:</Label>
+                      <Input
+                        type="time"
+                        value={schedule[key].end}
+                        onChange={(e) => 
+                          handleScheduleChange(key, 'end', e.target.value)
+                        }
+                        className="w-24"
+                        data-testid={`input-${key}-end`}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowScheduleModal(false)}
+              data-testid="button-cancel-schedule"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={saveSchedule}
+              data-testid="button-save-schedule"
+            >
+              Save Schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

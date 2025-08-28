@@ -1357,6 +1357,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Doctor profile API
+  app.get("/api/doctor/profile", async (req, res) => {
+    try {
+      // For demo, always return the demo doctor data
+      const doctorProfile = {
+        id: 'doctor-michael-johnson',
+        firstName: 'Michael',
+        lastName: 'Johnson',
+        specialty: 'Cardiology',
+        province: 'Gauteng',
+        city: 'Johannesburg',
+        phone: '+27 11 123 4567',
+        rating: '4.8',
+        reviewCount: 127,
+        consultationFee: '650',
+        totalPatients: 234,
+        totalAppointments: 456,
+        pendingAppointments: 3
+      };
+      
+      res.json(doctorProfile);
+    } catch (error) {
+      console.error("Error fetching doctor profile:", error);
+      res.status(500).json({ error: "Failed to fetch doctor profile" });
+    }
+  });
+
+  // Doctor schedule management
+  app.get("/api/doctor/schedule", async (req, res) => {
+    try {
+      // Return default schedule structure for demo
+      const schedule = {
+        monday: { start: "09:00", end: "17:00", available: true },
+        tuesday: { start: "09:00", end: "17:00", available: true },
+        wednesday: { start: "09:00", end: "17:00", available: true },
+        thursday: { start: "09:00", end: "17:00", available: true },
+        friday: { start: "09:00", end: "17:00", available: true },
+        saturday: { start: "09:00", end: "13:00", available: false },
+        sunday: { start: "09:00", end: "13:00", available: false }
+      };
+      
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error fetching doctor schedule:", error);
+      res.status(500).json({ error: "Failed to fetch schedule" });
+    }
+  });
+
+  app.put("/api/doctor/schedule", async (req, res) => {
+    try {
+      const { schedule } = req.body;
+      
+      // In a real app, save to database
+      // For demo, just return success
+      await storage.logActivity({
+        userId: 'user-michael-johnson',
+        userType: 'doctor',
+        action: 'schedule_updated',
+        page: 'doctor_portal',
+        details: {
+          schedule: schedule,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'doctor_portal',
+      });
+      
+      res.json({ message: "Schedule updated successfully", schedule });
+    } catch (error) {
+      console.error("Error updating doctor schedule:", error);
+      res.status(500).json({ error: "Failed to update schedule" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

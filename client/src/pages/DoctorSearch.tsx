@@ -16,6 +16,7 @@ interface Doctor {
   specialty: string;
   province: string;
   city: string;
+  zipCode?: string;
   practiceAddress: string;
   phone: string;
   rating: string;
@@ -58,7 +59,8 @@ export default function DoctorSearch() {
     name: '',
     specialty: '',
     province: '',
-    city: ''
+    city: '',
+    zipCode: ''
   });
 
   const { data: doctors = [], isLoading } = useQuery<Doctor[]>({
@@ -69,6 +71,7 @@ export default function DoctorSearch() {
       if (searchFilters.specialty) params.set('specialty', searchFilters.specialty);
       if (searchFilters.province) params.set('province', searchFilters.province);
       if (searchFilters.city) params.set('city', searchFilters.city);
+      if (searchFilters.zipCode) params.set('zipCode', searchFilters.zipCode);
       
       const response = await fetch(`/api/doctors?${params.toString()}`);
       return response.json();
@@ -92,10 +95,10 @@ export default function DoctorSearch() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Search Filters</CardTitle>
-            <CardDescription>Find doctors by name, specialty, location, or city</CardDescription>
+            <CardDescription>Find doctors by name, specialty, province, city, or zip code</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Input
                 placeholder="Doctor name..."
                 value={searchFilters.name}
@@ -128,10 +131,17 @@ export default function DoctorSearch() {
               </Select>
 
               <Input
-                placeholder="City or zip code..."
+                placeholder="City..."
                 value={searchFilters.city}
                 onChange={(e) => setSearchFilters(prev => ({ ...prev, city: e.target.value }))}
-                data-testid="input-city-zip"
+                data-testid="input-city"
+              />
+
+              <Input
+                placeholder="Zip code..."
+                value={searchFilters.zipCode}
+                onChange={(e) => setSearchFilters(prev => ({ ...prev, zipCode: e.target.value }))}
+                data-testid="input-zip-code"
               />
             </div>
           </CardContent>
@@ -172,7 +182,7 @@ export default function DoctorSearch() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <MapPin className="h-4 w-4" />
-                        <span>{doctor.city}, {doctor.province}</span>
+                        <span>{doctor.city}, {doctor.province} {doctor.zipCode && `(${doctor.zipCode})`}</span>
                       </div>
                       
                       <div className="flex items-center gap-2 text-sm text-gray-600">

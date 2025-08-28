@@ -645,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Doctor search API - Returns verified doctors based on filters
   app.get("/api/doctors", async (req, res) => {
     try {
-      const { name, specialty, province, city } = req.query;
+      const { name, specialty, province, city, zipCode } = req.query;
       
       const allDoctors = await storage.getDoctors({});
       const verifiedDoctors = allDoctors.filter(doctor => doctor.isVerified);
@@ -676,6 +676,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const searchCity = (city as string).toLowerCase();
         filteredDoctors = filteredDoctors.filter(doctor => 
           doctor.city?.toLowerCase().includes(searchCity)
+        );
+      }
+      
+      if (zipCode) {
+        const searchZip = (zipCode as string).toLowerCase();
+        filteredDoctors = filteredDoctors.filter(doctor => 
+          doctor.zipCode?.toLowerCase().includes(searchZip) ||
+          doctor.practiceAddress?.toLowerCase().includes(searchZip)
         );
       }
       

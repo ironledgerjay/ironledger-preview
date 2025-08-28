@@ -30,9 +30,28 @@ export default function Login() {
 
   const doctorLoginMutation = useMutation({
     mutationFn: async (data: LoginForm) => {
-      return apiRequest('POST', '/api/doctors/login', data);
+      try {
+        const response = await fetch('/api/doctors/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || errorData.message || 'Login failed');
+        }
+
+        return await response.json();
+      } catch (error: any) {
+        console.error('Login error:', error);
+        throw error;
+      }
     },
     onSuccess: (response) => {
+      console.log('Login success:', response);
       toast({
         title: "Login Successful!",
         description: `Welcome back, Dr. ${response.doctor.firstName}!`,
@@ -42,6 +61,7 @@ export default function Login() {
       setLocation('/doctor-portal');
     },
     onError: (error: any) => {
+      console.error('Login mutation error:', error);
       if (error.message.includes('pending approval')) {
         toast({
           title: "Account Pending Approval",

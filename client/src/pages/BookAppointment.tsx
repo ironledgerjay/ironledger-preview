@@ -74,6 +74,13 @@ export default function BookAppointment() {
     enabled: !!user,
   });
 
+  // Fetch available time slots for the selected date
+  const { data: availableSlots = [], isLoading: slotsLoading } = useQuery({
+    queryKey: [`/api/doctor/availability/${doctorId}/${bookingForm.appointmentDate}`],
+    enabled: !!doctorId && !!bookingForm.appointmentDate,
+    refetchOnMount: true,
+  });
+
   const bookingMutation = useMutation({
     mutationFn: async (bookingData: any) => {
       const response = await apiRequest('POST', '/api/bookings', bookingData);
@@ -151,12 +158,15 @@ export default function BookAppointment() {
     }
   };
 
-  const timeSlots = [
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
-    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-    '17:00', '17:30', '18:00'
-  ];
+  // Get available time slots based on doctor's schedule
+  const getAvailableTimeSlots = () => {
+    if (!availableSlots || availableSlots.length === 0) {
+      return [];
+    }
+    return availableSlots.filter(slot => slot.isAvailable);
+  };
+
+  const availableTimeSlots = getAvailableTimeSlots();
 
   if (doctorLoading) {
     return (
@@ -339,14 +349,27 @@ export default function BookAppointment() {
                       <Select 
                         value={bookingForm.appointmentTime} 
                         onValueChange={(value) => setBookingForm(prev => ({ ...prev, appointmentTime: value }))}
+                        disabled={!bookingForm.appointmentDate || slotsLoading}
                       >
                         <SelectTrigger data-testid="select-appointment-time">
                           <SelectValue placeholder="Select time slot" />
                         </SelectTrigger>
                         <SelectContent>
-                          {timeSlots.map(time => (
-                            <SelectItem key={time} value={time}>{time}</SelectItem>
-                          ))}
+                          {bookingForm.appointmentDate ? (
+                            slotsLoading ? (
+                              <SelectItem value="loading" disabled>Loading available times...</SelectItem>
+                            ) : availableTimeSlots.length > 0 ? (
+                              availableTimeSlots.map(slot => (
+                                <SelectItem key={slot.time} value={slot.time}>
+                                  {slot.time} (Available)
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="no-slots" disabled>No available slots for this date</SelectItem>
+                            )
+                          ) : (
+                            <SelectItem value="select-date" disabled>Please select a date first</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -386,17 +409,58 @@ export default function BookAppointment() {
                     />
                   </div>
 
+                  {/* Available Slots Preview */}
+                  {bookingForm.appointmentDate && availableSlots.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-800 mb-2">Available Times for {new Date(bookingForm.appointmentDate).toLocaleDateString()}</h4>
+                      <div className="grid grid-cols-4 gap-2">
+                        {availableSlots.filter(slot => slot.isAvailable).slice(0, 8).map(slot => (
+                          <button
+                            key={slot.time}
+                            type="button"
+                            onClick={() => setBookingForm(prev => ({ ...prev, appointmentTime: slot.time }))}
+                            className={`text-xs px-2 py-1 rounded border ${
+                              bookingForm.appointmentTime === slot.time 
+                                ? 'bg-blue-600 text-white border-blue-600' 
+                                : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-100'
+                            }`}
+                          >
+                            {slot.time}
+                          </button>
+                        ))}
+                      </div>
+                      {availableSlots.filter(slot => slot.isAvailable).length > 8 && (
+                        <p className="text-xs text-blue-600 mt-2">+{availableSlots.filter(slot => slot.isAvailable).length - 8} more times available</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Booking Summary */}
+                  {bookingForm.appointmentDate && bookingForm.appointmentTime && doctor && (
+                    <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                      <h4 className="font-medium text-teal-800 mb-2">Booking Summary</h4>
+                      <div className="space-y-1 text-sm text-teal-700">
+                        <p><strong>Doctor:</strong> Dr. {doctor.firstName} {doctor.lastName}</p>
+                        <p><strong>Date:</strong> {new Date(bookingForm.appointmentDate).toLocaleDateString()}</p>
+                        <p><strong>Time:</strong> {bookingForm.appointmentTime}</p>
+                        <p><strong>Type:</strong> {bookingForm.consultationType === 'in-person' ? 'In-Person' : 'Virtual'}</p>
+                        <p><strong>Fee:</strong> {membership?.type === 'premium' ? 'FREE (Premium Member)' : 'R10 Booking Fee'}</p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Submit Button */}
                   <div className="flex gap-4 pt-6 border-t">
                     <BackButton />
                     <Button
                       type="submit"
-                      disabled={bookingMutation.isPending}
+                      disabled={bookingMutation.isPending || !bookingForm.appointmentDate || !bookingForm.appointmentTime || slotsLoading}
                       className="bg-teal-600 hover:bg-teal-700 flex-1"
                       data-testid="button-submit-booking"
                     >
                       {bookingMutation.isPending ? 'Processing...' : 
-                       membership?.type === 'premium' ? 'Book Appointment (Free)' : 'Book Appointment (R10 fee)'}
+                       !bookingForm.appointmentDate || !bookingForm.appointmentTime ? 'Select Date & Time' :
+                       membership?.type === 'premium' ? 'Book Appointment (Free)' : 'Proceed to Payment (R10)'}
                     </Button>
                   </div>
                 </form>

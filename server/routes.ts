@@ -974,6 +974,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get doctor availability for a specific date
+  app.get("/api/doctor/availability/:doctorId/:date", async (req, res) => {
+    try {
+      const { doctorId, date } = req.params;
+      
+      // Get existing bookings for this doctor on this date
+      const allBookings = await storage.getBookingsByDoctor(doctorId);
+      const dateBookings = allBookings.filter(booking => {
+        const bookingDate = new Date(booking.appointmentDate).toISOString().split('T')[0];
+        return bookingDate === date && booking.status !== 'cancelled';
+      });
+
+      // Generate time slots and mark which are booked
+      const timeSlots = [];
+      for (let hour = 8; hour <= 18; hour++) {
+        for (let minute of [0, 30]) {
+          if (hour === 18 && minute === 30) break;
+          const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          
+          // Check if this time slot is already booked
+          const isBooked = dateBookings.some(booking => {
+            const bookingTime = new Date(booking.appointmentDate).toTimeString().slice(0, 5);
+            return bookingTime === time;
+          });
+          
+          timeSlots.push({
+            time,
+            isBooked,
+            isAvailable: !isBooked
+          });
+        }
+      }
+
+      res.json(timeSlots);
+    } catch (error) {
+      console.error("Error fetching doctor availability:", error);
+      res.status(500).json({ error: "Failed to fetch availability" });
+    }
+  });
+
   // Update booking status
   app.put("/api/bookings/:bookingId/status", async (req, res) => {
     try {

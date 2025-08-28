@@ -31,6 +31,12 @@ interface Doctor {
   isVerified: boolean;
 }
 
+interface TimeSlot {
+  time: string;
+  available: boolean;
+  datetime: string;
+}
+
 interface BookingForm {
   patientName: string;
   patientEmail: string;
@@ -420,7 +426,7 @@ export default function BookAppointment() {
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <h4 className="font-medium text-blue-800 mb-2">Available Times for {new Date(bookingForm.appointmentDate).toLocaleDateString()}</h4>
                       <div className="grid grid-cols-4 gap-2">
-                        {availableTimeSlots.slice(0, 8).map(slot => (
+                        {availableTimeSlots.slice(0, 8).map((slot: TimeSlot) => (
                           <button
                             key={slot.time}
                             type="button"
@@ -450,7 +456,7 @@ export default function BookAppointment() {
                         <p><strong>Date:</strong> {new Date(bookingForm.appointmentDate).toLocaleDateString()}</p>
                         <p><strong>Time:</strong> {bookingForm.appointmentTime}</p>
                         <p><strong>Type:</strong> {bookingForm.consultationType === 'in-person' ? 'In-Person' : 'Virtual'}</p>
-                        <p><strong>Fee:</strong> {membership?.type === 'premium' ? 'FREE (Premium Member)' : 'R10 Booking Fee'}</p>
+                        <p><strong>Fee:</strong> {(membership as any)?.type === 'premium' ? 'FREE (Premium Member)' : 'R10 Booking Fee'}</p>
                       </div>
                     </div>
                   )}
@@ -466,7 +472,7 @@ export default function BookAppointment() {
                     >
                       {bookingMutation.isPending ? 'Processing...' : 
                        !bookingForm.appointmentDate || !bookingForm.appointmentTime ? 'Select Date & Time' :
-                       membership?.type === 'premium' ? 'Book Appointment (Free)' : 'Proceed to Payment (R10)'}
+                       (membership as any)?.type === 'premium' ? 'Book Appointment (Free)' : 'Proceed to Payment (R10)'}
                     </Button>
                   </div>
                 </form>

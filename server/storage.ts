@@ -65,6 +65,8 @@ export interface IStorage {
   // CRM support methods
   countUsers(): Promise<number>;
   countDoctors(): Promise<number>;
+  getAllUsers(): Promise<any[]>;
+  getAllPayments(): Promise<any[]>;
   getRecentActivity(limit?: number): Promise<ActivityLog[]>;
 }
 
@@ -426,6 +428,21 @@ export class MemStorage implements IStorage {
 
   async getRecentActivity(limit: number = 20): Promise<ActivityLog[]> {
     return this.getActivityLogs(limit);
+  }
+
+  async getAllUsers(): Promise<any[]> {
+    return Array.from(this.users.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getAllPayments(): Promise<any[]> {
+    const payments = Array.from(this.payments.values());
+    const users = Array.from(this.users.values());
+    
+    return payments.map(payment => ({
+      ...payment,
+      user: users.find(user => user.id === payment.userId)
+    })).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 }
 

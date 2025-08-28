@@ -349,16 +349,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get live platform statistics for CRM dashboard
   app.get("/api/crm/stats", async (req, res) => {
     try {
-      const stats = await storage.getPlatformStats();
-      const userCount = await storage.countUsers();
-      const doctorCount = await storage.countDoctors();
+      const basicStats = await storage.getPlatformStats();
+      const totalUsers = await storage.countUsers();
+      const allUsers = await storage.getAllUsers();
+      const allPayments = await storage.getAllPayments();
       
-      res.json({
-        ...stats,
-        totalUsers: userCount,
-        totalVerifiedDoctors: doctorCount,
+      // Calculate premium members (users with successful payments)
+      const premiumMembers = allPayments
+        .filter(payment => payment.status === 'COMPLETE' && payment.type === 'membership')
+        .map(payment => payment.userId)
+        .filter((userId, index, arr) => arr.indexOf(userId) === index)
+        .length;
+      
+      // Calculate active users (users with activity in last 7 days)  
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const activeUsers = allUsers.filter(user => 
+        new Date(user.createdAt) > sevenDaysAgo
+      ).length;
+      
+      const enhancedStats = {
+        ...basicStats,
+        totalUsers,
+        premiumMembers,
+        activeUsers,
         timestamp: new Date().toISOString()
-      });
+      };
+      
+      res.json(enhancedStats);
     } catch (error) {
       console.error("Error fetching CRM stats:", error);
       res.status(500).json({ error: "Failed to fetch platform statistics" });
@@ -426,6 +444,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching doctors:", error);
       res.status(500).json({ error: "Failed to fetch doctors" });
+    }
+  });
+
+  // Get all users for CRM
+  app.get("/api/crm/users", async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Get payment analytics for CRM
+  app.get("/api/crm/payments", async (req, res) => {
+    try {
+      const payments = await storage.getAllPayments();
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      res.status(500).json({ error: "Failed to fetch payments" });
     }
   });
 

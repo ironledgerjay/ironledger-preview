@@ -1,5 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
 import { useActivityLogger } from "@/hooks/useActivityLogger";
-import { CheckCircle, XCircle, Clock, User, MapPin, Phone, Mail } from "lucide-react";
+import { CheckCircle, XCircle, Clock, User, MapPin, Phone, Mail, Users, CreditCard, Plus, TrendingUp, Activity } from "lucide-react";
 // Remove unused import
 
 interface Doctor {
@@ -44,13 +51,35 @@ interface Stats {
   totalPatients: number;
   totalBookings: number;
   averageRating: number;
+  totalUsers: number;
+  premiumMembers: number;
+  activeUsers: number;
+}
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
+interface Payment {
+  id: string;
+  userId: string;
+  amount: string;
+  status: string;
+  type: string;
+  createdAt: string;
+  user?: User;
 }
 
 export default function Admin() {
   useActivityLogger('admin');
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'pending' | 'notifications' | 'stats'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'payments' | 'stats' | 'enroll'>('pending');
 
   // Fetch pending doctors with real-time polling
   const { data: pendingDoctors = [], isLoading: loadingPending } = useQuery<Doctor[]>({
@@ -71,6 +100,20 @@ export default function Admin() {
     queryKey: ['/api/crm/stats'],
     enabled: activeTab === 'stats',
     refetchInterval: 10000, // Poll every 10 seconds for updated stats
+  });
+
+  // Fetch all users with real-time polling
+  const { data: users = [], isLoading: loadingUsers } = useQuery<User[]>({
+    queryKey: ['/api/crm/users'],
+    enabled: activeTab === 'users',
+    refetchInterval: 5000, // Poll every 5 seconds for user updates
+  });
+
+  // Fetch payment analytics
+  const { data: payments = [], isLoading: loadingPayments } = useQuery<Payment[]>({
+    queryKey: ['/api/crm/payments'],
+    enabled: activeTab === 'payments',
+    refetchInterval: 15000, // Poll every 15 seconds for payment updates
   });
 
   // Doctor approval mutation
@@ -329,6 +372,377 @@ export default function Admin() {
     </div>
   );
 
+  const renderUsers = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+          All Users
+        </h2>
+        <Badge variant="secondary">
+          {users.length} total users
+        </Badge>
+      </div>
+
+      {loadingUsers ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Loading users...</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {users.map((user) => (
+            <Card key={user.id}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+                        {user.firstName[0]}{user.lastName[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-white">
+                        {user.firstName} {user.lastName}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {user.email}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={user.role === 'doctor' ? 'default' : 'secondary'}>
+                      {user.role}
+                    </Badge>
+                    <p className="text-sm text-gray-500">
+                      Joined {new Date(user.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderPayments = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+          Payment Analytics
+        </h2>
+        <Badge variant="secondary">
+          {payments.length} total payments
+        </Badge>
+      </div>
+
+      {loadingPayments ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Loading payments...</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {payments.map((payment) => (
+            <Card key={payment.id}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-white">
+                      R{payment.amount} - {payment.type}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {payment.user ? `${payment.user.firstName} ${payment.user.lastName}` : 'Unknown User'}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={payment.status === 'COMPLETE' ? 'default' : 'destructive'}>
+                      {payment.status}
+                    </Badge>
+                    <p className="text-sm text-gray-500">
+                      {new Date(payment.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const doctorEnrollSchema = z.object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Valid email is required"),
+    phone: z.string().min(1, "Phone number is required"),
+    specialty: z.string().min(1, "Specialty is required"),
+    province: z.string().min(1, "Province is required"),
+    city: z.string().min(1, "City is required"),
+    hpcsaNumber: z.string().min(1, "HPCSA number is required"),
+    practiceAddress: z.string().min(1, "Practice address is required"),
+    bio: z.string().min(1, "Bio is required"),
+  });
+
+  const doctorEnrollForm = useForm<z.infer<typeof doctorEnrollSchema>>({
+    resolver: zodResolver(doctorEnrollSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      specialty: "",
+      province: "",
+      city: "",
+      hpcsaNumber: "",
+      practiceAddress: "",
+      bio: "",
+    },
+  });
+
+  const enrollDoctorMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof doctorEnrollSchema>) => {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userType: 'doctor',
+          ...data,
+        }),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/doctors/pending'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/stats'] });
+      toast({
+        title: "Doctor Enrolled",
+        description: "Doctor has been successfully enrolled and is pending approval.",
+      });
+      doctorEnrollForm.reset();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to enroll doctor. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const renderEnrollDoctor = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+        Manually Enroll Doctor
+      </h2>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Doctor Registration Form</CardTitle>
+          <CardDescription>
+            Manually add a new doctor to the platform. They will still require approval.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...doctorEnrollForm}>
+            <form onSubmit={doctorEnrollForm.handleSubmit((data) => enrollDoctorMutation.mutate(data))} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={doctorEnrollForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={doctorEnrollForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={doctorEnrollForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={doctorEnrollForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={doctorEnrollForm.control}
+                  name="specialty"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Specialty</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select specialty" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="General Practice">General Practice</SelectItem>
+                          <SelectItem value="Cardiology">Cardiology</SelectItem>
+                          <SelectItem value="Dermatology">Dermatology</SelectItem>
+                          <SelectItem value="Pediatrics">Pediatrics</SelectItem>
+                          <SelectItem value="Orthopedics">Orthopedics</SelectItem>
+                          <SelectItem value="Neurology">Neurology</SelectItem>
+                          <SelectItem value="Psychiatry">Psychiatry</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={doctorEnrollForm.control}
+                  name="province"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Province</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select province" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Gauteng">Gauteng</SelectItem>
+                          <SelectItem value="Western Cape">Western Cape</SelectItem>
+                          <SelectItem value="KwaZulu-Natal">KwaZulu-Natal</SelectItem>
+                          <SelectItem value="Eastern Cape">Eastern Cape</SelectItem>
+                          <SelectItem value="Mpumalanga">Mpumalanga</SelectItem>
+                          <SelectItem value="Limpopo">Limpopo</SelectItem>
+                          <SelectItem value="North West">North West</SelectItem>
+                          <SelectItem value="Free State">Free State</SelectItem>
+                          <SelectItem value="Northern Cape">Northern Cape</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={doctorEnrollForm.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={doctorEnrollForm.control}
+                name="hpcsaNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>HPCSA Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={doctorEnrollForm.control}
+                name="practiceAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Practice Address</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={doctorEnrollForm.control}
+                name="bio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bio</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                type="submit"
+                disabled={enrollDoctorMutation.isPending}
+                className="w-full"
+                data-testid="button-enroll-doctor"
+              >
+                {enrollDoctorMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Enrolling Doctor...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Enroll Doctor
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8">
@@ -350,29 +764,55 @@ export default function Admin() {
               variant={activeTab === 'pending' ? 'default' : 'ghost'}
               onClick={() => setActiveTab('pending')}
               data-testid="tab-pending"
+              className="flex items-center gap-2"
             >
-              Pending Approvals
+              <Clock className="h-4 w-4" />
+              Pending Doctors
             </Button>
             <Button
-              variant={activeTab === 'notifications' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('notifications')}
-              data-testid="tab-notifications"
+              variant={activeTab === 'users' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('users')}
+              data-testid="tab-users"
+              className="flex items-center gap-2"
             >
-              Notifications
+              <Users className="h-4 w-4" />
+              All Users
+            </Button>
+            <Button
+              variant={activeTab === 'payments' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('payments')}
+              data-testid="tab-payments"
+              className="flex items-center gap-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              Payments
             </Button>
             <Button
               variant={activeTab === 'stats' ? 'default' : 'ghost'}
               onClick={() => setActiveTab('stats')}
               data-testid="tab-stats"
+              className="flex items-center gap-2"
             >
-              Statistics
+              <TrendingUp className="h-4 w-4" />
+              Analytics
+            </Button>
+            <Button
+              variant={activeTab === 'enroll' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('enroll')}
+              data-testid="tab-enroll"
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Doctor
             </Button>
           </div>
 
           {/* Tab Content */}
           {activeTab === 'pending' && renderPendingDoctors()}
-          {activeTab === 'notifications' && renderNotifications()}
+          {activeTab === 'users' && renderUsers()}
+          {activeTab === 'payments' && renderPayments()}
           {activeTab === 'stats' && renderStats()}
+          {activeTab === 'enroll' && renderEnrollDoctor()}
         </div>
       </div>
     </div>

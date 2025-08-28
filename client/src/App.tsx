@@ -17,6 +17,7 @@ import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import PaymentSuccess from "@/pages/PaymentSuccess";
 import PaymentCancelled from "@/pages/PaymentCancelled";
+import VerificationPending from "@/pages/VerificationPending";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/emergency" component={Emergency} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/verification-pending" component={VerificationPending} />
       <Route path="/payment/success" component={PaymentSuccess} />
       <Route path="/payment/cancelled" component={PaymentCancelled} />
       <Route path="/admin" component={() => {

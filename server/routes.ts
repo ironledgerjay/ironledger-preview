@@ -5,6 +5,107 @@ import { storage } from "./storage";
 import { insertUserSchema, insertPatientSchema, insertDoctorSchema, insertBookingSchema, insertPaymentSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Create user profile (Signup endpoint)
+  app.post("/api/users", async (req, res) => {
+    try {
+      const { userType, firstName, lastName, email, phone, province, city, ...extraData } = req.body;
+      
+      // Create base user
+      const userData = {
+        firstName,
+        lastName,
+        email,
+        phone: phone || null,
+        role: userType === 'doctor' ? 'doctor' : 'patient',
+      };
+      
+      const user = await storage.createUser(userData);
+      
+      // Create specific profile based on user type
+      let profile = null;
+      if (userType === 'doctor') {
+        // Create doctor profile
+        const doctorData = {
+          userId: user.id,
+          firstName,
+          lastName,
+          email,
+          phone: phone || null,
+          specialty: extraData.specialty || 'General Practice',
+          province: province || null,
+          city: city || null,
+          hpcsaNumber: extraData.hpcsaNumber || null,
+          practiceAddress: extraData.practiceAddress || null,
+          bio: extraData.bio || null,
+          isVerified: false, // Doctors need manual verification
+        };
+        
+        profile = await storage.createDoctor(doctorData);
+        
+        // Log to CRM system
+        await storage.logActivity({
+          userId: user.id,
+          userType: 'doctor',
+          action: 'doctor_registration',
+          page: 'signup',
+          details: {
+            specialty: doctorData.specialty,
+            province: doctorData.province,
+            hpcsaNumber: doctorData.hpcsaNumber,
+            requiresVerification: true,
+          },
+          source: 'main_site',
+        });
+        
+        // Create notification for CRM
+        await storage.createSystemNotification({
+          type: 'doctor_registration',
+          title: 'New Doctor Registration',
+          message: `Dr. ${firstName} ${lastName} has registered and requires verification`,
+          targetSystem: 'admin_crm',
+          metadata: JSON.stringify({
+            doctorId: profile.id,
+            userId: user.id,
+            specialty: doctorData.specialty,
+            hpcsaNumber: doctorData.hpcsaNumber,
+            priority: 'high',
+          }),
+        });
+        
+      } else {
+        // Create patient profile
+        const patientData = {
+          userId: user.id,
+          firstName,
+          lastName,
+          email,
+          phone: phone || null,
+          dateOfBirth: null,
+          province: province || null,
+        };
+        
+        profile = await storage.createPatient(patientData);
+        
+        // Log to CRM system
+        await storage.logActivity({
+          userId: user.id,
+          userType: 'patient',
+          action: 'patient_registration',
+          page: 'signup',
+          details: {
+            province: patientData.province,
+          },
+          source: 'main_site',
+        });
+      }
+      
+      res.status(201).json({ user, profile });
+    } catch (error) {
+      console.error('User creation error:', error);
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Failed to create user' });
+    }
+  });
+
   // User registration and profile creation
   app.post("/api/users/profile", async (req, res) => {
     try {

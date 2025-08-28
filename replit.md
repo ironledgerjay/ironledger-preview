@@ -1,0 +1,36 @@
+# Overview
+
+IronLedger MedMap is a healthcare platform that connects South African patients with verified medical professionals across all 9 provinces. The application features a comprehensive doctor directory, appointment booking system, and membership tiers with integrated PayFast payment processing. Built as a full-stack web application with React frontend and Express.js backend, it emphasizes trust and accessibility in healthcare delivery.
+
+# User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+# System Architecture
+
+## Frontend Architecture
+The frontend uses a modern React stack with TypeScript and Vite for development. The UI is built with shadcn/ui components based on Radix UI primitives, styled with Tailwind CSS using a custom design system. Navigation is handled by Wouter for client-side routing, and React Query manages server state and caching. The application follows a component-based architecture with shared hooks for authentication (Supabase) and payment processing (PayFast).
+
+## Backend Architecture
+The backend is an Express.js server with TypeScript that provides a REST API. It uses a layered architecture with route handlers in `/server/routes.ts` and a storage abstraction layer defined in `/server/storage.ts`. The server includes middleware for request logging, JSON parsing, and error handling. Development setup uses Vite middleware for hot reloading and asset serving.
+
+## Data Storage
+The application uses PostgreSQL as the primary database with Drizzle ORM for type-safe database operations. The schema defines separate tables for users, patients, doctors, bookings, and payments, using UUIDs as primary keys. Database migrations are managed through Drizzle Kit, and the connection is configured for Neon Database hosting.
+
+## Authentication & Authorization
+Authentication is handled through Supabase Auth, providing secure user registration and login flows. The system supports role-based access with separate user types (patient, doctor, admin) and maintains session state through React context. User profiles are created in the local database after successful authentication.
+
+## Payment Processing
+PayFast integration handles secure payment processing for membership upgrades and booking fees. The system generates payment URLs with proper signatures and handles payment notifications. Membership tiers include Basic (free with R10 booking fees) and Premium (R39 quarterly with free bookings), with payment status tracking in the database.
+
+# External Dependencies
+
+- **Supabase**: Authentication service and user management
+- **PayFast**: Payment gateway for South African transactions
+- **Neon Database**: PostgreSQL hosting and database management
+- **Radix UI**: Headless UI component primitives
+- **Tailwind CSS**: Utility-first CSS framework
+- **React Query**: Server state management and caching
+- **Drizzle ORM**: Type-safe database operations
+- **Vite**: Development server and build tooling
+- **shadcn/ui**: Pre-built component library

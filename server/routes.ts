@@ -571,13 +571,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         success: true, 
-        message: `Doctor ${isVerified ? 'approved' : 'rejected'} successfully`,
+        message: `Doctor ${isVerified ? 'approved and enlisted' : 'rejected'} successfully`,
         doctorId,
         doctor: doctor
       });
     } catch (error) {
       console.error("Error updating doctor verification:", error);
       res.status(500).json({ error: "Failed to update doctor verification" });
+    }
+  });
+
+  // Remove user account (Admin only) - For policy violations
+  app.delete("/api/crm/users/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { reason } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Remove user and associated profiles (doctor/patient)
+      await storage.removeUser(userId);
+      
+      // Log removal activity for admin tracking
+      await storage.logActivity({
+        userId: userId,
+        userType: 'admin',
+        action: 'user_account_removed',
+        page: 'admin_crm',
+        details: {
+          userId: userId,
+          userEmail: user.email,
+          userRole: user.role,
+          reason: reason || 'Policy violation',
+          removedAt: new Date().toISOString(),
+          adminAction: true,
+        },
+        source: 'admin_crm',
+      });
+      
+      // Create system notification about account removal
+      await storage.createSystemNotification({
+        type: 'account_removed',
+        title: 'User Account Removed',
+        message: `User account ${user.email} (${user.role}) has been removed by admin for: ${reason || 'policy violation'}`,
+        targetSystem: 'admin_crm',
+        metadata: JSON.stringify({
+          userId,
+          userEmail: user.email,
+          userRole: user.role,
+          reason: reason || 'Policy violation',
+          adminAction: true,
+        }),
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'User account removed successfully',
+        removedUser: {
+          id: user.id,
+          email: user.email,
+          role: user.role
+        }
+      });
+    } catch (error) {
+      console.error('User removal error:', error);
+      res.status(500).json({ message: 'Failed to remove user account' });
     }
   });
 

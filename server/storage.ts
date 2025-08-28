@@ -463,6 +463,48 @@ export class MemStorage implements IStorage {
       user: users.find(user => user.id === payment.userId)
     })).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
+
+  async removeUser(userId: string): Promise<void> {
+    // Remove user from main users collection
+    this.users.delete(userId);
+    
+    // Remove associated doctor profile if exists
+    const doctorToRemove = Array.from(this.doctors.values()).find(doctor => doctor.userId === userId);
+    if (doctorToRemove) {
+      this.doctors.delete(doctorToRemove.id);
+    }
+    
+    // Remove associated patient profile if exists
+    const patientToRemove = Array.from(this.patients.values()).find(patient => patient.userId === userId);
+    if (patientToRemove) {
+      this.patients.delete(patientToRemove.id);
+    }
+    
+    // Remove user's bookings
+    const userBookings = Array.from(this.bookings.values()).filter(booking => 
+      booking.patientId === userId || booking.doctorId === userId
+    );
+    userBookings.forEach(booking => this.bookings.delete(booking.id));
+    
+    // Remove user's payments
+    const userPayments = Array.from(this.payments.values()).filter(payment => payment.userId === userId);
+    userPayments.forEach(payment => this.payments.delete(payment.id));
+  }
+
+  async getUser(userId: string): Promise<any> {
+    return this.users.get(userId) || null;
+  }
+
+  async updateDoctor(doctorId: string, updateData: any): Promise<Doctor> {
+    const existingDoctor = this.doctors.get(doctorId);
+    if (!existingDoctor) {
+      throw new Error('Doctor not found');
+    }
+    
+    const updatedDoctor = { ...existingDoctor, ...updateData };
+    this.doctors.set(doctorId, updatedDoctor);
+    return updatedDoctor;
+  }
 }
 
 export const storage = new MemStorage();

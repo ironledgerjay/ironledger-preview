@@ -129,9 +129,10 @@ export default function Admin() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/doctors/pending'] });
       queryClient.invalidateQueries({ queryKey: ['/api/crm/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/users'] });
       toast({
         title: variables.isVerified ? "Doctor Approved" : "Doctor Rejected",
-        description: `Dr. ${data.doctor?.firstName || 'Unknown'} ${data.doctor?.lastName || 'Doctor'} has been ${variables.isVerified ? 'approved' : 'rejected'}.`,
+        description: `Dr. ${data.doctor?.firstName || 'Unknown'} ${data.doctor?.lastName || 'Doctor'} has been ${variables.isVerified ? 'approved and enlisted' : 'rejected'}.`,
       });
     },
     onError: (error) => {
@@ -142,6 +143,43 @@ export default function Admin() {
       });
     },
   });
+
+  // User removal mutation
+  const removeUser = useMutation({
+    mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
+      const response = await fetch(`/api/crm/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/doctors/pending'] });
+      toast({
+        title: "Account Removed",
+        description: `User account has been successfully removed.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to remove user account. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRemoveUser = (userId: string, userEmail: string) => {
+    if (!confirm(`Are you sure you want to remove the account for ${userEmail}? This action cannot be undone.`)) {
+      return;
+    }
+
+    const reason = prompt('Please provide a reason for account removal:') || 'Policy violation';
+    removeUser.mutate({ userId, reason });
+  };
 
   const handleDoctorAction = (doctorId: string, isVerified: boolean) => {
     const notes = isVerified 
@@ -418,6 +456,14 @@ export default function Admin() {
                         {user.isVerified ? 'Verified' : 'Pending'}
                       </Badge>
                     )}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveUser(user.id, user.email)}
+                      className="ml-2"
+                    >
+                      Remove Account
+                    </Button>
                     <p className="text-sm text-gray-500">
                       Joined {new Date(user.createdAt).toLocaleDateString()}
                     </p>

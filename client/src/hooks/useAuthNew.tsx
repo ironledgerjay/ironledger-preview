@@ -49,11 +49,19 @@ interface RegisterData {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(
-    localStorage.getItem('accessToken')
-  );
+  const [token, setToken] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Initialize token from localStorage after component mounts
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const storedToken = localStorage.getItem('accessToken');
+      if (storedToken) {
+        setToken(storedToken);
+      }
+    }
+  }, []);
 
   // Set up API request interceptor for authentication
   useEffect(() => {
@@ -113,7 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (data) => {
       setToken(data.accessToken);
-      localStorage.setItem('accessToken', data.accessToken);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('accessToken', data.accessToken);
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
       toast({
         title: "Login Successful",
@@ -177,7 +187,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       setToken(null);
-      localStorage.removeItem('accessToken');
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('accessToken');
+      }
       queryClient.clear();
       toast({
         title: "Logged Out",
@@ -187,7 +199,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onError: () => {
       // Clear local state even if API call fails
       setToken(null);
-      localStorage.removeItem('accessToken');
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('accessToken');
+      }
       queryClient.clear();
     },
   });

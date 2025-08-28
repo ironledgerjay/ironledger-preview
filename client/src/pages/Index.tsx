@@ -19,7 +19,7 @@ import Footer from '@/components/Footer';
 import ProvinceMap from '@/components/ProvinceMap';
 import MembershipPlans from '@/components/MembershipPlans';
 import DoctorCard from '@/components/DoctorCard';
-import StatsSection from '@/components/StatsSection';
+import SpecialtiesSection from '@/components/SpecialtiesSection';
 
 import { 
   Search, 
@@ -155,6 +155,10 @@ export default function Index() {
     setLocation(`/search?province=${encodeURIComponent(province)}`);
   };
 
+  const handleSpecialtySelect = (specialty: string) => {
+    setLocation(`/search?specialty=${encodeURIComponent(specialty)}`);
+  };
+
   const handleBookAppointment = (doctorId: string) => {
     setLocation(`/book-appointment?doctor=${doctorId}`);
   };
@@ -175,121 +179,170 @@ export default function Index() {
       <Header />
       
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary/5 to-accent/5 py-20" data-testid="section-hero">
+      <section className="bg-gradient-to-br from-teal-400 to-emerald-600 py-20 text-white" data-testid="section-hero">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Hero Content */}
-            <div className="space-y-8 animate-slide-up">
-              <div className="space-y-4">
-                <h1 className="text-4xl lg:text-6xl font-bold text-foreground leading-tight">
-                  Find Trusted <span className="text-primary">Medical Care</span> Across South Africa
-                </h1>
-                <p className="text-xl text-muted-foreground max-w-lg">
-                  Connect with verified doctors in all 9 provinces. Book appointments instantly with PayFast secure payments.
-                </p>
-                
-                {/* Live Statistics */}
-                {stats && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{stats.totalDoctors}+</div>
-                      <div className="text-sm text-muted-foreground">Verified Doctors</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{stats.totalPatients}+</div>
-                      <div className="text-sm text-muted-foreground">Happy Patients</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{stats.totalBookings}+</div>
-                      <div className="text-sm text-muted-foreground">Appointments</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{stats.averageRating.toFixed(1)}/5</div>
-                      <div className="text-sm text-muted-foreground">Avg Rating</div>
-                    </div>
-                  </div>
-                )}
+          {/* Top badges */}
+          <div className="flex justify-center space-x-4 mb-8">
+            <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+                <span>South Africa's Premier Medical Platform</span>
               </div>
-              
-              {/* Quick Search */}
-              <Card className="shadow-lg border border-border" data-testid="card-quick-search">
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">Quick Doctor Search</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select value={selectedProvince} onValueChange={setSelectedProvince}>
-                      <SelectTrigger data-testid="select-province">
-                        <SelectValue placeholder="Select Province" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {provinces.map((province) => (
-                          <SelectItem key={province} value={province}>
-                            {province}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    <Select value={selectedSpecialty} onValueChange={setSelectedSpecialty}>
-                      <SelectTrigger data-testid="select-specialty">
-                        <SelectValue placeholder="Specialty" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {specialties.map((specialty) => (
-                          <SelectItem key={specialty} value={specialty}>
-                            {specialty}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm">
+              <div className="flex items-center space-x-2">
+                <Clock className="w-4 h-4" />
+                <span>24/7 Booking Available</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center space-y-8">
+            <div className="space-y-6">
+              <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
+                Find Your Perfect
+                <br />
+                Medical Specialist
+              </h1>
+              <p className="text-xl text-white/90 max-w-2xl mx-auto">
+                Search by specialty, location, or medical aid. Book appointments instantly with top-rated doctors across South Africa.
+              </p>
+            </div>
+            
+            {/* Enhanced Search Box */}
+            <Card className="max-w-4xl mx-auto bg-white/10 backdrop-blur-sm border-white/20" data-testid="card-search">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search for specialists..."
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border-0 bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Enter your location..."
+                      className="w-full px-4 py-3 rounded-lg border-0 bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Medical aid provider..."
+                      className="w-full px-4 py-3 rounded-lg border-0 bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-teal-500"
+                    />
                   </div>
                   <Button 
-                    className="w-full mt-4" 
+                    className="bg-teal-600 hover:bg-teal-700 text-white py-3 px-6 rounded-lg font-medium"
                     onClick={handleQuickSearch}
-                    data-testid="button-find-doctors"
+                    data-testid="button-search-doctors"
                   >
-                    <Search className="h-4 w-4 mr-2" />
-                    Find Doctors
+                    Search Doctors
                   </Button>
-                </CardContent>
-              </Card>
-              
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
-                <div className="flex items-center space-x-2">
-                  <Shield className="h-5 w-5 text-green-600" />
-                  <span>HPCSA Verified</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Lock className="h-5 w-5 text-blue-600" />
-                  <span>PayFast Secure</span>
+                
+                {/* Quick filters */}
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <span className="bg-teal-500/20 text-white px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-teal-500/30">
+                    Cardiology
+                  </span>
+                  <span className="bg-teal-500/20 text-white px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-teal-500/30">
+                    General Practice
+                  </span>
+                  <span className="bg-teal-500/20 text-white px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-teal-500/30">
+                    Cape Town
+                  </span>
                 </div>
+              </CardContent>
+            </Card>
+            
+            {/* Trust badges */}
+            <div className="flex flex-wrap justify-center gap-6 text-sm">
+              <div className="bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
                 <div className="flex items-center space-x-2">
-                  <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                  <span>{stats?.averageRating?.toFixed(1) || '4.8'}/5 Rating</span>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>24/7 Booking</span>
+                </div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Instant Confirmation</span>
                 </div>
               </div>
             </div>
             
-            {/* Hero Image */}
-            <div className="animate-fade-in" data-testid="hero-image">
-              <img 
-                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=600" 
-                alt="South African healthcare professionals" 
-                className="rounded-2xl shadow-2xl w-full h-auto"
-              />
-            </div>
+            {/* Live Stats */}
+            {stats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto mt-12">
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                  <div className="text-3xl font-bold">{stats.totalDoctors}+</div>
+                  <div className="text-white/80 mt-1">Verified Doctors</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                  <div className="text-3xl font-bold">50+</div>
+                  <div className="text-white/80 mt-1">Specialties</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                  <div className="text-3xl font-bold">9</div>
+                  <div className="text-white/80 mt-1">Provinces</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                  <div className="text-3xl font-bold">24/7</div>
+                  <div className="text-white/80 mt-1">Support</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Statistics Section */}
-      <StatsSection />
+      {/* Specialties Section */}
+      <SpecialtiesSection onSpecialtySelect={handleSpecialtySelect} />
 
-      {/* Province Map Section */}
-      <ProvinceMap onProvinceSelect={handleProvinceSelect} />
-
-      {/* Membership Plans Section */}
-      <MembershipPlans />
+      {/* Membership Section */}
+      <section className="py-20 bg-gray-50" data-testid="section-membership-preview">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center space-y-6 mb-12">
+            <Badge className="bg-teal-100 text-teal-700 hover:bg-teal-100">
+              Exclusive Membership
+            </Badge>
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900">
+              Save More with <span className="text-teal-600">MedMap Membership</span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Join thousands of South Africans who save on medical appointments with our 
+              premium membership program.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="text-4xl font-bold text-teal-600 mb-2">R39</div>
+              <div className="text-gray-600">Quarterly membership</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-teal-600 mb-2">5</div>
+              <div className="text-gray-600">Free bookings included</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-teal-600 mb-2">24/7</div>
+              <div className="text-gray-600">Priority support</div>
+            </div>
+          </div>
+          
+          <div className="text-center mt-8">
+            <Link href="/membership">
+              <Button className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-lg font-medium">
+                Learn More About Membership
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* Featured Doctors Section */}
       <section className="py-20 bg-card" data-testid="section-featured-doctors">

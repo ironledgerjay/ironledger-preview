@@ -53,6 +53,7 @@ export default function BookAppointment() {
   const doctorId = params.doctorId;
   
   console.log('BookAppointment - doctorId from params:', doctorId);
+  console.log('BookAppointment - full params object:', params);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();

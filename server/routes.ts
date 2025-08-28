@@ -1435,6 +1435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get available time slots for a specific doctor and date
   app.get("/api/doctors/:doctorId/available-slots", async (req, res) => {
     try {
+      console.log('Available slots request:', req.params, req.query);
       const { doctorId } = req.params;
       const { date } = req.query;
       
@@ -1444,6 +1445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const requestedDate = new Date(date as string);
       const dayName = requestedDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      console.log('Processing date:', date, 'dayName:', dayName);
       
       // Get doctor's default schedule
       const schedule = {

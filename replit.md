@@ -49,7 +49,7 @@ PayFast integration handles secure payment processing for membership upgrades an
 - **Health Endpoints**: /health, /health/ready, /health/live endpoints
 - **System Monitoring**: Memory usage, database connectivity, API performance
 - **Real-time Statistics**: Live platform statistics and metrics
-- **External Admin CRM**: Administrative interface accessible at https://admin-crm-ironledgermedma.replit.app/
+- **Internal Admin Panel**: Administrative interface accessible at /admin within the main website
 - **Cross-System Communication**: Live data sharing via API endpoints for activity logs, notifications, and statistics
 - **Activity Tracking**: Comprehensive logging of user actions and system events for CRM monitoring
 - **Universal Back Navigation**: Smart back button component with browser history integration and fallback paths

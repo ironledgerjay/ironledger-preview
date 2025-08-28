@@ -52,22 +52,25 @@ export default function Admin() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'pending' | 'notifications' | 'stats'>('pending');
 
-  // Fetch pending doctors
+  // Fetch pending doctors with real-time polling
   const { data: pendingDoctors = [], isLoading: loadingPending } = useQuery<Doctor[]>({
     queryKey: ['/api/crm/doctors/pending'],
     enabled: activeTab === 'pending',
+    refetchInterval: 3000, // Poll every 3 seconds for real-time updates
   });
 
-  // Fetch notifications
+  // Fetch notifications with real-time polling
   const { data: notifications = [], isLoading: loadingNotifications } = useQuery<Notification[]>({
     queryKey: ['/api/crm/notifications'],
     enabled: activeTab === 'notifications',
+    refetchInterval: 5000, // Poll every 5 seconds for new notifications
   });
 
-  // Fetch stats
+  // Fetch stats with periodic updates
   const { data: stats, isLoading: loadingStats } = useQuery<Stats>({
     queryKey: ['/api/crm/stats'],
     enabled: activeTab === 'stats',
+    refetchInterval: 10000, // Poll every 10 seconds for updated stats
   });
 
   // Doctor approval mutation

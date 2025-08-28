@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider as NewAuthProvider } from "@/hooks/useAuthNew";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import EmergencyButton from "@/components/EmergencyButton";
 
@@ -16,6 +17,10 @@ import DoctorSearch from "@/pages/DoctorSearch";
 import DoctorPortal from "@/pages/DoctorPortal";
 import Emergency from "@/pages/Emergency";
 import Login from "@/pages/Login";
+import LoginNew from "@/pages/LoginNew";
+import SignupNew from "@/pages/SignupNew";
+import EmailVerification from "@/pages/EmailVerification";
+import ResetPassword from "@/pages/ResetPassword";
 import Signup from "@/pages/Signup";
 import PaymentSuccess from "@/pages/PaymentSuccess";
 import PaymentCancelled from "@/pages/PaymentCancelled";
@@ -41,6 +46,10 @@ function Router() {
       <Route path="/book/:doctorId" component={BookAppointment} />
       <Route path="/emergency" component={Emergency} />
       <Route path="/login" component={Login} />
+      <Route path="/login-new" component={LoginNew} />
+      <Route path="/signup-new" component={SignupNew} />
+      <Route path="/verify-email" component={EmailVerification} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/signup" component={Signup} />
       <Route path="/verification-pending" component={VerificationPending} />
       <Route path="/payment/success" component={PaymentSuccess} />
@@ -59,9 +68,11 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
-            <Toaster />
-            <Router />
-            <EmergencyButton />
+            <NewAuthProvider>
+              <Toaster />
+              <Router />
+              <EmergencyButton />
+            </NewAuthProvider>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>

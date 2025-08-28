@@ -7,8 +7,48 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
   role: text("role").notNull().default("patient"), // patient, doctor, admin
+  isEmailVerified: boolean("is_email_verified").default(false),
+  emailVerificationToken: text("email_verification_token"),
+  emailVerificationExpires: timestamp("email_verification_expires"),
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpires: timestamp("password_reset_expires"),
+  twoFactorSecret: text("two_factor_secret"),
+  isTwoFactorEnabled: boolean("is_two_factor_enabled").default(false),
+  loginAttempts: integer("login_attempts").default(0),
+  lockedUntil: timestamp("locked_until"),
+  lastLogin: timestamp("last_login"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User sessions table for JWT token management
+export const userSessions = pgTable("user_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  tokenHash: text("token_hash").notNull(),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  expiresAt: timestamp("expires_at").notNull(),
+  isRevoked: boolean("is_revoked").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Doctor verification documents
+export const doctorDocuments = pgTable("doctor_documents", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  doctorId: uuid("doctor_id").references(() => doctors.id).notNull(),
+  documentType: text("document_type").notNull(), // hpcsa_certificate, degree, id_document, practice_license
+  fileName: text("file_name").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type"),
+  verificationStatus: text("verification_status").default("pending"), // pending, verified, rejected
+  verificationNotes: text("verification_notes"),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  verifiedAt: timestamp("verified_at"),
+  verifiedBy: uuid("verified_by").references(() => users.id),
 });
 
 // Patient profiles
@@ -36,11 +76,18 @@ export const doctors = pgTable("doctors", {
   phone: text("phone"),
   province: text("province").notNull(),
   city: text("city").notNull(),
+  zipCode: text("zip_code"),
   practiceAddress: text("practice_address"),
+  qualifications: text("qualifications"),
+  experience: text("experience"),
   isVerified: boolean("is_verified").default(false),
+  verificationStatus: text("verification_status").default("pending"), // pending, under_review, verified, rejected
+  verificationNotes: text("verification_notes"),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0.00"),
   reviewCount: integer("review_count").default(0),
   consultationFee: decimal("consultation_fee", { precision: 10, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Bookings table
@@ -97,44 +144,86 @@ export const systemNotifications = pgTable("system_notifications", {
 });
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertUserSchema = createInsertSchema(users).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true, 
+  loginAttempts: true, 
+  lockedUntil: true, 
+  lastLogin: true,
+  isEmailVerified: true,
+  emailVerificationToken: true,
+  emailVerificationExpires: true,
+  passwordResetToken: true,
+  passwordResetExpires: true,
+  twoFactorSecret: true,
+  isTwoFactorEnabled: true
+});
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({ 
+  id: true, 
+  createdAt: true, 
+  isRevoked: true 
+});
+
+export const insertDoctorDocumentSchema = createInsertSchema(doctorDocuments).omit({ 
+  id: true, 
+  uploadedAt: true, 
+  verifiedAt: true, 
+  verifiedBy: true,
+  verificationStatus: true,
+  verificationNotes: true
+});
+
 export const insertPatientSchema = createInsertSchema(patients).omit({ 
   id: true, 
   freeBookingsRemaining: true,
   membershipExpiresAt: true 
 });
+
 export const insertDoctorSchema = createInsertSchema(doctors).omit({ 
   id: true, 
   isVerified: true,
+  verificationStatus: true,
+  verificationNotes: true,
   rating: true,
-  reviewCount: true 
+  reviewCount: true,
+  createdAt: true,
+  updatedAt: true
 });
+
 export const insertBookingSchema = createInsertSchema(bookings).omit({ 
   id: true, 
   createdAt: true,
   paymentStatus: true,
   paymentId: true 
 });
+
 export const insertPaymentSchema = createInsertSchema(payments).omit({ 
   id: true, 
   createdAt: true 
 });
+
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 export const insertSystemNotificationSchema = createInsertSchema(systemNotifications).omit({ id: true, createdAt: true });
 
 // Types
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type InsertPatient = z.infer<typeof insertPatientSchema>;
-export type InsertDoctor = z.infer<typeof insertDoctorSchema>;
-export type InsertBooking = z.infer<typeof insertBookingSchema>;
-export type InsertPayment = z.infer<typeof insertPaymentSchema>;
-export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
-export type InsertSystemNotification = z.infer<typeof insertSystemNotificationSchema>;
-
 export type User = typeof users.$inferSelect;
+export type UserSession = typeof userSessions.$inferSelect;
+export type DoctorDocument = typeof doctorDocuments.$inferSelect;
 export type Patient = typeof patients.$inferSelect;
 export type Doctor = typeof doctors.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type SystemNotification = typeof systemNotifications.$inferSelect;
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type InsertDoctorDocument = z.infer<typeof insertDoctorDocumentSchema>;
+export type InsertPatient = z.infer<typeof insertPatientSchema>;
+export type InsertDoctor = z.infer<typeof insertDoctorSchema>;
+export type InsertBooking = z.infer<typeof insertBookingSchema>;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type InsertSystemNotification = z.infer<typeof insertSystemNotificationSchema>;

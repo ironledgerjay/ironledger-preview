@@ -1,82 +1,174 @@
 import { Request, Response, NextFunction } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { AuthService } from '../services/authService';
+import { db } from '../storage';
+import { users } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role?: string;
-  };
+// Extend Request type to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        role: string;
+        isEmailVerified: boolean;
+        isTwoFactorEnabled: boolean;
+      };
+    }
+  }
 }
 
-export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Authentication middleware
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication token required' });
     }
 
-    const token = authHeader.substring(7);
-    
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    if (error || !user) {
-      return res.status(401).json({ error: 'Invalid token' });
+    const decoded = await AuthService.verifyToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    req.user = {
-      id: user.id,
-      email: user.email!,
-      role: user.user_metadata?.role || 'patient'
-    };
+    // Get user from database
+    const [user] = await db.select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      isEmailVerified: users.isEmailVerified,
+      isTwoFactorEnabled: users.isTwoFactorEnabled,
+    })
+    .from(users)
+    .where(eq(users.id, decoded.userId))
+    .limit(1);
 
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    req.user = user;
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    res.status(401).json({ error: 'Authentication failed' });
   }
-};
+}
 
-export const requireRole = (role: string) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Role-based authorization middleware
+export function authorize(roles: string | string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    if (req.user.role !== role && req.user.role !== 'admin') {
+    const allowedRoles = Array.isArray(roles) ? roles : [roles];
+    
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
     next();
   };
-};
+}
 
-export const optionalAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Email verification requirement middleware
+export function requireEmailVerification(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (!req.user.isEmailVerified) {
+    return res.status(403).json({ 
+      error: 'Email verification required',
+      code: 'EMAIL_NOT_VERIFIED'
+    });
+  }
+
+  next();
+}
+
+// Two-factor authentication requirement middleware
+export function require2FA(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (req.user.isTwoFactorEnabled) {
+    const twoFactorToken = req.headers['x-2fa-token'] as string;
+    
+    if (!twoFactorToken) {
+      return res.status(403).json({ 
+        error: 'Two-factor authentication required',
+        code: '2FA_REQUIRED'
+      });
+    }
+
+    // Verify 2FA token (this would be done in the route handler)
+    // We pass it through here and let the route handler verify
+  }
+
+  next();
+}
+
+// Doctor-specific authentication
+export function authenticateDoctor(req: Request, res: Response, next: NextFunction) {
+  authenticate(req, res, (err) => {
+    if (err) return next(err);
+    
+    if (req.user?.role !== 'doctor') {
+      return res.status(403).json({ error: 'Doctor access required' });
+    }
+    
+    next();
+  });
+}
+
+// Admin-specific authentication
+export function authenticateAdmin(req: Request, res: Response, next: NextFunction) {
+  authenticate(req, res, (err) => {
+    if (err) return next(err);
+    
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    next();
+  });
+}
+
+// Optional authentication (for routes that work with or without auth)
+export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const { data: { user } } = await supabase.auth.getUser(token);
-      
-      if (user) {
-        req.user = {
-          id: user.id,
-          email: user.email!,
-          role: user.user_metadata?.role || 'patient'
-        };
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (token) {
+      const decoded = await AuthService.verifyToken(token);
+      if (decoded) {
+        const [user] = await db.select({
+          id: users.id,
+          email: users.email,
+          role: users.role,
+          isEmailVerified: users.isEmailVerified,
+          isTwoFactorEnabled: users.isTwoFactorEnabled,
+        })
+        .from(users)
+        .where(eq(users.id, decoded.userId))
+        .limit(1);
+
+        if (user) {
+          req.user = user;
+        }
       }
     }
 
     next();
   } catch (error) {
-    // Continue without authentication if token is invalid
+    // Silently continue without authentication for optional auth
     next();
   }
-};
+}

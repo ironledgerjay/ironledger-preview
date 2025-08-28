@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { env, corsConfig, isDevelopment } from "./config/environment";
@@ -27,9 +28,10 @@ app.use(helmet({
 
 app.use(cors(corsConfig));
 
-// Body parsing
+// Body parsing and cookies
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+app.use(cookieParser());
 
 // Custom logging (keep existing implementation)
 app.use(requestLogger);

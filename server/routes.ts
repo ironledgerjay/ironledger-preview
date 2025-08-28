@@ -3,8 +3,11 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
 import { insertUserSchema, insertPatientSchema, insertDoctorSchema, insertBookingSchema, insertPaymentSchema } from "@shared/schema";
+import authRoutes from './routes/authRoutes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Mount authentication routes
+  app.use('/api/auth', authRoutes);
   // Create user profile (Signup endpoint)
   app.post("/api/users", async (req, res) => {
     try {

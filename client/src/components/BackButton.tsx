@@ -5,35 +5,30 @@ import { ArrowLeft } from 'lucide-react';
 interface BackButtonProps {
   fallbackPath?: string;
   className?: string;
-  children?: React.ReactNode;
 }
 
-export default function BackButton({ 
-  fallbackPath = '/', 
-  className = '',
-  children = 'Back'
-}: BackButtonProps) {
+export default function BackButton({ fallbackPath = '/', className }: BackButtonProps) {
   const [, setLocation] = useLocation();
 
   const handleBack = () => {
-    // Try to go back in browser history first
+    // Try to go back in browser history
     if (window.history.length > 1) {
       window.history.back();
     } else {
-      // Fallback to specified path or home
+      // Fallback to specified path
       setLocation(fallbackPath);
     }
   };
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       onClick={handleBack}
-      className={`flex items-center gap-2 ${className}`}
-      data-testid="button-back"
+      className={`text-gray-600 hover:text-gray-800 p-0 h-auto ${className}`}
+      data-testid="back-button"
     >
-      <ArrowLeft className="h-4 w-4" />
-      {children}
+      <ArrowLeft className="h-4 w-4 mr-2" />
+      Back
     </Button>
   );
 }

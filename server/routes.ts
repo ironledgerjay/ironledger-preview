@@ -871,7 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If not found by doctor ID, try to get by user ID from all doctors
       if (!doctor) {
-        const doctors = await storage.getAllDoctors();
+        const doctors = await storage.getDoctors({});
         doctor = doctors.find(d => d.userId === doctorId || d.id === doctorId);
         console.log(`Available doctors: ${doctors.map(d => `${d.id} (${d.firstName} ${d.lastName})`).join(', ')}`);
       }

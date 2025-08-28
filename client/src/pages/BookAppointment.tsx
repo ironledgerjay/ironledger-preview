@@ -45,8 +45,10 @@ interface BookingForm {
 export default function BookAppointment() {
   useActivityLogger('book_appointment');
   
-  const params = useParams();
+  const params = useParams<{ doctorId: string }>();
   const doctorId = params.doctorId;
+  
+  console.log('BookAppointment - doctorId from params:', doctorId);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -66,16 +68,24 @@ export default function BookAppointment() {
   const { data: doctor, isLoading: doctorLoading, error: doctorError } = useQuery<Doctor>({
     queryKey: [`/api/doctor/${doctorId}`],
     enabled: !!doctorId,
+    retry: 1,
+    staleTime: 0,
   });
+  
+  console.log('BookAppointment - doctor data:', doctor);
+  console.log('BookAppointment - doctorLoading:', doctorLoading);
+  console.log('BookAppointment - doctorError:', doctorError);
 
   // Show error if doctor not found
   if (doctorError) {
+    console.error('Doctor error:', doctorError);
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Doctor Not Found</h1>
-            <p className="text-gray-600 mb-4">The doctor you're looking for doesn't exist or has been removed.</p>
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Doctor</h1>
+            <p className="text-gray-600 mb-4">There was an error loading the doctor information. Please try again.</p>
+            <p className="text-xs text-gray-500 mb-4">Doctor ID: {doctorId}</p>
             <BackButton fallbackPath="/doctors">Return to Doctor Search</BackButton>
           </div>
         </div>

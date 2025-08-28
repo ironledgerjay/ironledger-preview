@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import Footer from '@/components/Footer';
 import ProvinceMap from '@/components/ProvinceMap';
 import MembershipPlans from '@/components/MembershipPlans';
 import DoctorCard from '@/components/DoctorCard';
+import StatsSection from '@/components/StatsSection';
 
 import { 
   Search, 
@@ -125,10 +126,22 @@ const specialties = [
   'Psychiatry',
 ];
 
+interface PlatformStats {
+  totalDoctors: number;
+  totalPatients: number;
+  totalBookings: number;
+  averageRating: number;
+}
+
 export default function Index() {
   const [, setLocation] = useLocation();
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
+
+  // Fetch platform statistics
+  const { data: stats } = useQuery<PlatformStats>({
+    queryKey: ['/api/stats'],
+  });
 
   const handleQuickSearch = () => {
     const searchParams = new URLSearchParams();
@@ -174,6 +187,28 @@ export default function Index() {
                 <p className="text-xl text-muted-foreground max-w-lg">
                   Connect with verified doctors in all 9 provinces. Book appointments instantly with PayFast secure payments.
                 </p>
+                
+                {/* Live Statistics */}
+                {stats && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{stats.totalDoctors}+</div>
+                      <div className="text-sm text-muted-foreground">Verified Doctors</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{stats.totalPatients}+</div>
+                      <div className="text-sm text-muted-foreground">Happy Patients</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{stats.totalBookings}+</div>
+                      <div className="text-sm text-muted-foreground">Appointments</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{stats.averageRating.toFixed(1)}/5</div>
+                      <div className="text-sm text-muted-foreground">Avg Rating</div>
+                    </div>
+                  </div>
+                )}
               </div>
               
               {/* Quick Search */}
@@ -230,7 +265,7 @@ export default function Index() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                  <span>4.8/5 Rating</span>
+                  <span>{stats?.averageRating?.toFixed(1) || '4.8'}/5 Rating</span>
                 </div>
               </div>
             </div>
@@ -246,6 +281,9 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      {/* Statistics Section */}
+      <StatsSection />
 
       {/* Province Map Section */}
       <ProvinceMap onProvinceSelect={handleProvinceSelect} />

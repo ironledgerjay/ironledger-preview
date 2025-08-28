@@ -148,15 +148,40 @@ export class MemStorage implements IStorage {
         reviewCount: 156,
         consultationFee: '750.00',
       },
+      // Demo doctor for testing login
+      {
+        id: 'doctor-michael-johnson',
+        userId: 'user-michael-johnson',
+        firstName: 'Michael',
+        lastName: 'Johnson',
+        specialty: 'Cardiology',
+        hpcsaNumber: 'MP789123',
+        phone: '+27 11 555 1234',
+        province: 'Gauteng',
+        city: 'Johannesburg',
+        zipCode: '2000',
+        practiceAddress: '456 Heart Centre, Sandton, Johannesburg',
+        isVerified: true,
+        rating: '4.8',
+        reviewCount: 98,
+        consultationFee: '850.00',
+      },
     ];
 
     mockDoctors.forEach(doctor => {
       this.doctors.set(doctor.id, doctor);
       
-      // Create corresponding user
+      // Create corresponding user with special email for demo doctor
+      let email: string;
+      if (doctor.id === 'doctor-michael-johnson') {
+        email = 'dr.johnson@example.com';  // Special demo credentials
+      } else {
+        email = `${doctor.firstName.toLowerCase()}.${doctor.lastName.toLowerCase().replace(/\s+/g, '.')}@example.com`;
+      }
+      
       const user: User = {
         id: doctor.userId,
-        email: `${doctor.firstName.toLowerCase()}.${doctor.lastName.toLowerCase()}@example.com`,
+        email: email,
         role: 'doctor',
         createdAt: new Date(),
       };

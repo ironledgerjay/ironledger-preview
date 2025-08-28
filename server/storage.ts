@@ -431,8 +431,27 @@ export class MemStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<any[]> {
-    return Array.from(this.users.values())
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const users = Array.from(this.users.values());
+    const patients = Array.from(this.patients.values());
+    const doctors = Array.from(this.doctors.values());
+    
+    return users.map(user => {
+      // Find associated patient or doctor profile
+      const patient = patients.find(p => p.userId === user.id);
+      const doctor = doctors.find(d => d.userId === user.id);
+      
+      // Return user with profile information
+      return {
+        ...user,
+        firstName: patient?.firstName || doctor?.firstName || 'Unknown',
+        lastName: patient?.lastName || doctor?.lastName || 'User',
+        phone: patient?.phone || doctor?.phone || null,
+        specialty: doctor?.specialty || null,
+        province: patient?.province || doctor?.province || null,
+        city: patient?.city || doctor?.city || null,
+        isVerified: doctor?.isVerified || null,
+      };
+    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async getAllPayments(): Promise<any[]> {

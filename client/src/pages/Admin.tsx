@@ -397,15 +397,15 @@ export default function Admin() {
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
-                        {user.firstName[0]}{user.lastName[0]}
+                        {user.firstName?.[0] || 'U'}{user.lastName?.[0] || 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <h3 className="font-medium text-gray-900 dark:text-white">
-                        {user.firstName} {user.lastName}
+                        {user.firstName || 'Unknown'} {user.lastName || 'User'}
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {user.email}
+                        {user.email || 'No email'}
                       </p>
                     </div>
                   </div>
@@ -413,6 +413,11 @@ export default function Admin() {
                     <Badge variant={user.role === 'doctor' ? 'default' : 'secondary'}>
                       {user.role}
                     </Badge>
+                    {user.role === 'doctor' && (
+                      <Badge variant={user.isVerified ? 'default' : 'destructive'}>
+                        {user.isVerified ? 'Verified' : 'Pending'}
+                      </Badge>
+                    )}
                     <p className="text-sm text-gray-500">
                       Joined {new Date(user.createdAt).toLocaleDateString()}
                     </p>

@@ -160,7 +160,7 @@ export default function Index() {
   };
 
   const handleBookAppointment = (doctorId: string) => {
-    setLocation(`/book-appointment?doctor=${doctorId}`);
+    setLocation(`/book-appointment/${doctorId}`);
   };
 
   const renderStars = (rating: number) => {

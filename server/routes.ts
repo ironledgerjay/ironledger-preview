@@ -1414,8 +1414,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { doctorId } = req.params;
       
-      // Return stored schedule or default schedule
-      const schedule = global.doctorSchedule || {
+      // Return default schedule for all doctors
+      const schedule = {
         monday: { start: "09:00", end: "17:00", available: true },
         tuesday: { start: "09:00", end: "17:00", available: true },
         wednesday: { start: "09:00", end: "17:00", available: true },
@@ -1443,10 +1443,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const requestedDate = new Date(date as string);
-      const dayName = requestedDate.toLocaleDateString('en-US', { weekday: 'lowercase' });
+      const dayName = requestedDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
       
-      // Get doctor's schedule
-      const schedule = global.doctorSchedule || {
+      // Get doctor's default schedule
+      const schedule = {
         monday: { start: "09:00", end: "17:00", available: true },
         tuesday: { start: "09:00", end: "17:00", available: true },
         wednesday: { start: "09:00", end: "17:00", available: true },

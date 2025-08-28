@@ -43,7 +43,7 @@ function Router() {
       <Route path="/doctors" component={DoctorSearch} />
       <Route path="/doctor-portal" component={DoctorPortal} />
       <Route path="/doctor-signup" component={DoctorSignup} />
-      <Route path="/book/:doctorId" component={BookAppointment} />
+      <Route path="/book-appointment/:doctorId" component={BookAppointment} />
       <Route path="/emergency" component={Emergency} />
       <Route path="/login" component={Login} />
       <Route path="/login-new" component={LoginNew} />

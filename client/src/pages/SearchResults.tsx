@@ -151,11 +151,11 @@ export default function SearchResults() {
       );
     }
 
-    if (selectedProvince) {
+    if (selectedProvince && selectedProvince !== 'all') {
       filtered = filtered.filter(doctor => doctor.province === selectedProvince);
     }
 
-    if (selectedSpecialty) {
+    if (selectedSpecialty && selectedSpecialty !== 'all') {
       filtered = filtered.filter(doctor => doctor.specialty === selectedSpecialty);
     }
 
@@ -168,8 +168,8 @@ export default function SearchResults() {
 
   const clearFilters = () => {
     setSearchQuery('');
-    setSelectedProvince('');
-    setSelectedSpecialty('');
+    setSelectedProvince('all');
+    setSelectedSpecialty('all');
   };
 
   return (
@@ -209,7 +209,7 @@ export default function SearchResults() {
                       <SelectValue placeholder="All Provinces" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Provinces</SelectItem>
+                      <SelectItem value="all">All Provinces</SelectItem>
                       {provinces.map((province) => (
                         <SelectItem key={province} value={province}>
                           {province}
@@ -223,7 +223,7 @@ export default function SearchResults() {
                       <SelectValue placeholder="All Specialties" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Specialties</SelectItem>
+                      <SelectItem value="all">All Specialties</SelectItem>
                       {specialties.map((specialty) => (
                         <SelectItem key={specialty} value={specialty}>
                           {specialty}
@@ -246,21 +246,21 @@ export default function SearchResults() {
             </Card>
 
             {/* Active Filters */}
-            {(selectedProvince || selectedSpecialty) && (
+            {(selectedProvince && selectedProvince !== 'all') || (selectedSpecialty && selectedSpecialty !== 'all') ? (
               <div className="flex flex-wrap gap-2" data-testid="active-filters">
-                {selectedProvince && (
+                {selectedProvince && selectedProvince !== 'all' && (
                   <Badge variant="secondary" className="px-3 py-1">
                     <MapPin className="h-3 w-3 mr-1" />
                     {selectedProvince}
                   </Badge>
                 )}
-                {selectedSpecialty && (
+                {selectedSpecialty && selectedSpecialty !== 'all' && (
                   <Badge variant="secondary" className="px-3 py-1">
                     {selectedSpecialty}
                   </Badge>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </section>

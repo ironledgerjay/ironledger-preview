@@ -43,7 +43,11 @@ interface BookingForm {
 }
 
 export default function BookAppointment() {
-  useActivityLogger('book_appointment');
+  const { logPageView } = useActivityLogger();
+  
+  useEffect(() => {
+    logPageView('book_appointment');
+  }, []);
   
   const params = useParams<{ doctorId: string }>();
   const doctorId = params.doctorId;
@@ -78,6 +82,7 @@ export default function BookAppointment() {
   const { data: membership } = useQuery({
     queryKey: ['/api/user/membership'],
     enabled: !!user,
+    retry: false,
   });
 
   // Fetch available time slots when date is selected
@@ -128,7 +133,7 @@ export default function BookAppointment() {
     if (!doctor) return;
 
     // Check if payment is needed (R10 booking fee for basic users)
-    const isBasicUser = !membership || membership.type === 'basic';
+    const isBasicUser = !membership || (membership as any)?.type === 'basic';
     const bookingFee = isBasicUser ? 10.00 : 0;
 
     const bookingData = {
@@ -142,7 +147,7 @@ export default function BookAppointment() {
     if (bookingFee > 0) {
       // Generate PayFast payment for booking fee
       try {
-        const paymentURL = generatePaymentURL({
+        const paymentURL = await generatePaymentURL({
           amount: bookingFee,
           itemName: `Appointment Booking Fee - Dr. ${doctor.firstName} ${doctor.lastName}`,
           itemDescription: `Booking fee for ${bookingForm.appointmentDate} ${bookingForm.appointmentTime}`,
@@ -166,7 +171,7 @@ export default function BookAppointment() {
   };
 
   // Get available time slots from API response
-  const availableTimeSlots = availableSlots?.availableSlots || [];
+  const availableTimeSlots = (availableSlots as any)?.availableSlots || [];
 
   if (doctorLoading) {
     return (
@@ -255,7 +260,7 @@ export default function BookAppointment() {
                 <div className="border-t pt-4">
                   <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
                     <h4 className="font-medium text-teal-800 mb-1">Booking Fee</h4>
-                    {membership?.type === 'premium' ? (
+                    {(membership as any)?.type === 'premium' ? (
                       <p className="text-sm text-teal-700">
                         ✅ Premium Member - No booking fees!
                       </p>
@@ -359,7 +364,7 @@ export default function BookAppointment() {
                             slotsLoading ? (
                               <SelectItem value="loading" disabled>Loading available times...</SelectItem>
                             ) : availableTimeSlots.length > 0 ? (
-                              availableTimeSlots.map(slot => (
+                              availableTimeSlots.map((slot: any) => (
                                 <SelectItem key={slot.time} value={slot.time}>
                                   {slot.time}
                                 </SelectItem>

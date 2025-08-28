@@ -59,10 +59,28 @@ export function usePayFast() {
     });
   };
 
+  const generatePaymentURL = async (paymentData: {
+    amount: number;
+    itemName: string;
+    itemDescription: string;
+    returnUrl: string;
+    cancelUrl: string;
+    customStr1?: string;
+  }) => {
+    // Generate PayFast URL using the service
+    return await payFastService.generatePaymentUrl({
+      amount: paymentData.amount,
+      itemName: paymentData.itemName,
+      itemDescription: paymentData.itemDescription,
+      customStr1: paymentData.customStr1 || 'general'
+    }, user?.email || '');
+  };
+
   return {
     processPayment,
     processMembershipPayment,
     processBookingPayment,
+    generatePaymentURL,
     loading,
   };
 }

@@ -8,7 +8,11 @@ import {
   type Booking, 
   type InsertBooking, 
   type Payment, 
-  type InsertPayment 
+  type InsertPayment,
+  type ActivityLog,
+  type InsertActivityLog,
+  type SystemNotification,
+  type InsertSystemNotification
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -47,6 +51,20 @@ export interface IStorage {
     totalBookings: number;
     averageRating: number;
   }>;
+
+  // Activity logs
+  createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
+  getActivityLogs(limit?: number): Promise<ActivityLog[]>;
+
+  // System notifications
+  createSystemNotification(notification: InsertSystemNotification): Promise<SystemNotification>;
+  getSystemNotifications(targetSystem?: string): Promise<SystemNotification[]>;
+  markNotificationAsRead(id: string): Promise<void>;
+
+  // CRM support methods
+  countUsers(): Promise<number>;
+  countDoctors(): Promise<number>;
+  getRecentActivity(limit?: number): Promise<ActivityLog[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -55,6 +73,8 @@ export class MemStorage implements IStorage {
   private doctors: Map<string, Doctor>;
   private bookings: Map<string, Booking>;
   private payments: Map<string, Payment>;
+  private activityLogs: Map<string, ActivityLog>;
+  private systemNotifications: Map<string, SystemNotification>;
 
   constructor() {
     this.users = new Map();
@@ -62,6 +82,8 @@ export class MemStorage implements IStorage {
     this.doctors = new Map();
     this.bookings = new Map();
     this.payments = new Map();
+    this.activityLogs = new Map();
+    this.systemNotifications = new Map();
 
     // Initialize with some mock data for demonstration
     this.initializeMockData();
@@ -319,6 +341,76 @@ export class MemStorage implements IStorage {
       totalBookings,
       averageRating: Math.round(averageRating * 10) / 10,
     };
+  }
+
+  // Activity logs
+  async createActivityLog(insertLog: InsertActivityLog): Promise<ActivityLog> {
+    const id = randomUUID();
+    const log: ActivityLog = {
+      ...insertLog,
+      id,
+      userId: insertLog.userId || null,
+      entityType: insertLog.entityType || null,
+      entityId: insertLog.entityId || null,
+      details: insertLog.details || null,
+      ipAddress: insertLog.ipAddress || null,
+      userAgent: insertLog.userAgent || null,
+      source: insertLog.source || "main_site",
+      createdAt: new Date(),
+    };
+    this.activityLogs.set(id, log);
+    return log;
+  }
+
+  async getActivityLogs(limit: number = 50): Promise<ActivityLog[]> {
+    const logs = Array.from(this.activityLogs.values())
+      .sort((a, b) => b.createdAt!.getTime() - a.createdAt!.getTime())
+      .slice(0, limit);
+    return logs;
+  }
+
+  // System notifications
+  async createSystemNotification(insertNotification: InsertSystemNotification): Promise<SystemNotification> {
+    const id = randomUUID();
+    const notification: SystemNotification = {
+      ...insertNotification,
+      id,
+      targetSystem: insertNotification.targetSystem || null,
+      metadata: insertNotification.metadata || null,
+      isRead: false,
+      createdAt: new Date(),
+      expiresAt: insertNotification.expiresAt || null,
+    };
+    this.systemNotifications.set(id, notification);
+    return notification;
+  }
+
+  async getSystemNotifications(targetSystem?: string): Promise<SystemNotification[]> {
+    const notifications = Array.from(this.systemNotifications.values())
+      .filter(n => !targetSystem || n.targetSystem === targetSystem || n.targetSystem === 'both')
+      .filter(n => !n.expiresAt || n.expiresAt > new Date())
+      .sort((a, b) => b.createdAt!.getTime() - a.createdAt!.getTime());
+    return notifications;
+  }
+
+  async markNotificationAsRead(id: string): Promise<void> {
+    const notification = this.systemNotifications.get(id);
+    if (notification) {
+      this.systemNotifications.set(id, { ...notification, isRead: true });
+    }
+  }
+
+  // CRM support methods
+  async countUsers(): Promise<number> {
+    return this.users.size;
+  }
+
+  async countDoctors(): Promise<number> {
+    return this.doctors.size;
+  }
+
+  async getRecentActivity(limit: number = 20): Promise<ActivityLog[]> {
+    return this.getActivityLogs(limit);
   }
 }
 

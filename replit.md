@@ -50,6 +50,8 @@ PayFast integration handles secure payment processing for membership upgrades an
 - **System Monitoring**: Memory usage, database connectivity, API performance
 - **Real-time Statistics**: Live platform statistics and metrics
 - **External Admin CRM**: Administrative interface accessible at https://admin-crm-ironledgermedma.replit.app/
+- **Cross-System Communication**: Live data sharing via API endpoints for activity logs, notifications, and statistics
+- **Activity Tracking**: Comprehensive logging of user actions and system events for CRM monitoring
 
 ## Database & Migrations
 - **Automated Migrations**: Database schema migrations with Drizzle

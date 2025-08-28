@@ -243,6 +243,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CRM Communication API endpoints for live data sharing
+  
+  // Get live platform statistics for CRM dashboard
+  app.get("/api/crm/stats", async (req, res) => {
+    try {
+      const stats = await storage.getPlatformStats();
+      const userCount = await storage.countUsers();
+      const doctorCount = await storage.countDoctors();
+      
+      res.json({
+        ...stats,
+        totalUsers: userCount,
+        totalVerifiedDoctors: doctorCount,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error fetching CRM stats:", error);
+      res.status(500).json({ error: "Failed to fetch platform statistics" });
+    }
+  });
+
+  // Get recent activity logs for CRM monitoring
+  app.get("/api/crm/activity", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const logs = await storage.getActivityLogs(limit);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching activity logs:", error);
+      res.status(500).json({ error: "Failed to fetch activity logs" });
+    }
+  });
+
+  // Create activity log (for CRM actions)
+  app.post("/api/crm/activity", async (req, res) => {
+    try {
+      const logData = {
+        ...req.body,
+        source: "admin_crm",
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      };
+      
+      const log = await storage.createActivityLog(logData);
+      res.json(log);
+    } catch (error) {
+      console.error("Error creating activity log:", error);
+      res.status(500).json({ error: "Failed to create activity log" });
+    }
+  });
+
+  // Get system notifications for cross-system communication
+  app.get("/api/crm/notifications", async (req, res) => {
+    try {
+      const targetSystem = req.query.target as string || "admin_crm";
+      const notifications = await storage.getSystemNotifications(targetSystem);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Create system notification for cross-system alerts
+  app.post("/api/crm/notifications", async (req, res) => {
+    try {
+      const notification = await storage.createSystemNotification(req.body);
+      res.json(notification);
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      res.status(500).json({ error: "Failed to create notification" });
+    }
+  });
+
+  // Get all doctors with details for CRM
+  app.get("/api/crm/doctors", async (req, res) => {
+    try {
+      const doctors = await storage.getDoctors({});
+      res.json(doctors);
+    } catch (error) {
+      console.error("Error fetching doctors:", error);
+      res.status(500).json({ error: "Failed to fetch doctors" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

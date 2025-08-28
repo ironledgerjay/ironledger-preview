@@ -68,6 +68,34 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Activity logs for CRM tracking
+export const activityLogs = pgTable("activity_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id),
+  action: text("action").notNull(), // login, booking_created, payment_completed, etc.
+  entityType: text("entity_type"), // user, booking, payment, doctor
+  entityId: uuid("entity_id"),
+  details: text("details"), // JSON string with additional context
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  source: text("source").default("main_site"), // main_site, admin_crm
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// System notifications for cross-communication
+export const systemNotifications = pgTable("system_notifications", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull(), // info, warning, error, success
+  source: text("source").notNull(), // main_site, admin_crm
+  targetSystem: text("target_system"), // main_site, admin_crm, both
+  isRead: boolean("is_read").default(false),
+  metadata: text("metadata"), // JSON string for additional data
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertPatientSchema = createInsertSchema(patients).omit({ 
@@ -91,6 +119,8 @@ export const insertPaymentSchema = createInsertSchema(payments).omit({
   id: true, 
   createdAt: true 
 });
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
+export const insertSystemNotificationSchema = createInsertSchema(systemNotifications).omit({ id: true, createdAt: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -98,9 +128,13 @@ export type InsertPatient = z.infer<typeof insertPatientSchema>;
 export type InsertDoctor = z.infer<typeof insertDoctorSchema>;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type InsertSystemNotification = z.infer<typeof insertSystemNotificationSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Patient = typeof patients.$inferSelect;
 export type Doctor = typeof doctors.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type SystemNotification = typeof systemNotifications.$inferSelect;

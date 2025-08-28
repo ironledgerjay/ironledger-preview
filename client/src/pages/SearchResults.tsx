@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import DoctorCard from '@/components/DoctorCard';
+import BackButton from '@/components/BackButton';
+import { usePageTracking, useActivityLogger } from '@/hooks/useActivityLogger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -123,6 +125,8 @@ const mockDoctors = [
 ];
 
 export default function SearchResults() {
+  usePageTracking('Search Results');
+  const { logUserAction } = useActivityLogger();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('');
@@ -163,6 +167,7 @@ export default function SearchResults() {
   }, [searchQuery, selectedProvince, selectedSpecialty]);
 
   const handleBookAppointment = (doctorId: string) => {
+    logUserAction('book_appointment_click', 'Search Results', { doctorId });
     setLocation(`/book-appointment?doctor=${doctorId}`);
   };
 
@@ -179,6 +184,11 @@ export default function SearchResults() {
       {/* Search Header */}
       <section className="py-12 bg-gradient-to-br from-primary/5 to-accent/5 border-b border-border" data-testid="section-search-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Back Button */}
+          <div className="mb-6">
+            <BackButton fallbackPath="/" />
+          </div>
+          
           <div className="space-y-6">
             <div className="text-center space-y-4">
               <h1 className="text-3xl lg:text-4xl font-bold text-foreground">

@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import BackButton from '@/components/BackButton';
+import { usePageTracking, useActivityLogger } from '@/hooks/useActivityLogger';
 import { 
   Mail, 
   Phone, 
@@ -30,6 +32,8 @@ interface ContactFormData {
 }
 
 export default function Contact() {
+  usePageTracking('Contact');
+  const { logUserAction } = useActivityLogger();
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
@@ -76,6 +80,7 @@ export default function Contact() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    logUserAction('contact_form_submit', 'Contact', { subject: formData.subject });
     mutation.mutate(formData);
   };
 
@@ -117,6 +122,11 @@ export default function Contact() {
   return (
     <div className="min-h-screen bg-background py-12" data-testid="page-contact">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <BackButton fallbackPath="/" />
+        </div>
+        
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold text-foreground mb-4">

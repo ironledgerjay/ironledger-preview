@@ -2,8 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Heart, Shield, Users, Star, MapPin, Clock, Award, Target } from 'lucide-react';
 import founderImage from "@assets/WhatsApp Image 2025-03-12 at 11.57.10_b6d3b63c_1756414367652.jpg";
+import BackButton from '@/components/BackButton';
+import { usePageTracking } from '@/hooks/useActivityLogger';
 
 export default function About() {
+  usePageTracking('About');
   const stats = [
     { icon: Users, label: "Verified Doctors", value: "500+" },
     { icon: MapPin, label: "Provinces Covered", value: "9" },
@@ -32,6 +35,11 @@ export default function About() {
   return (
     <div className="min-h-screen bg-background py-12" data-testid="page-about">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <BackButton fallbackPath="/" />
+        </div>
+        
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold text-foreground mb-4">

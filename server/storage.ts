@@ -55,6 +55,7 @@ export interface IStorage {
   // Activity logs
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
   getActivityLogs(limit?: number): Promise<ActivityLog[]>;
+  logActivity(activityData: any): Promise<ActivityLog>;
 
   // System notifications
   createSystemNotification(notification: InsertSystemNotification): Promise<SystemNotification>;
@@ -367,6 +368,20 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.createdAt!.getTime() - a.createdAt!.getTime())
       .slice(0, limit);
     return logs;
+  }
+
+  async logActivity(activityData: any): Promise<ActivityLog> {
+    const logData: InsertActivityLog = {
+      userId: activityData.userId || null,
+      action: activityData.action || 'page_view',
+      entityType: activityData.page || 'page',
+      entityId: activityData.resourceId || null,
+      details: activityData.details || null,
+      ipAddress: activityData.ipAddress || null,
+      userAgent: activityData.userAgent || null,
+      source: activityData.source || 'main_site',
+    };
+    return this.createActivityLog(logData);
   }
 
   // System notifications

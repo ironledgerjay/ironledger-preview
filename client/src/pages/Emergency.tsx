@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import BackButton from '@/components/BackButton';
+import { usePageTracking, useActivityLogger } from '@/hooks/useActivityLogger';
 import { 
   AlertTriangle, 
   Phone, 
@@ -17,6 +19,8 @@ import { useQuery } from "@tanstack/react-query";
 import DoctorCard from "@/components/DoctorCard";
 
 export default function Emergency() {
+  usePageTracking('Emergency');
+  const { logUserAction } = useActivityLogger();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update time every minute
@@ -62,6 +66,11 @@ export default function Emergency() {
   return (
     <div className="min-h-screen bg-red-50 dark:bg-red-950/20 py-12" data-testid="page-emergency">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <BackButton fallbackPath="/" className="border-red-200 text-red-700 hover:bg-red-100 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/50" />
+        </div>
+        
         {/* Emergency Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">

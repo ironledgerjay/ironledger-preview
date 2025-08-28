@@ -1,142 +1,148 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { useMutation } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  Mail, 
+  Lock, 
+  User, 
+  Stethoscope, 
+  Eye, 
+  EyeOff,
+  ArrowRight,
+  Shield
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import { Stethoscope, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [userType, setUserType] = useState<'patient' | 'doctor'>('patient');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
   const [, setLocation] = useLocation();
   const { signIn } = useAuth();
   const { toast } = useToast();
-  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
 
-  const loginMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      const result = await signIn(email, password);
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-      return result;
-    },
-    onSuccess: () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await signIn(email, password);
       toast({
         title: "Welcome back!",
-        description: "You have successfully logged in.",
+        description: `Successfully logged in as ${userType}.`,
       });
       setLocation('/');
-    },
-    onError: (error: Error) => {
-      setError(error.message);
+    } catch (error) {
       toast({
         title: "Login failed",
-        description: error.message,
+        description: "Invalid email or password. Please try again.",
         variant: "destructive",
       });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    loginMutation.mutate({ email, password });
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <div className="flex items-center justify-center py-20 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8">
-          {/* Logo and Title */}
-          <div className="text-center">
-            <div className="flex items-center justify-center space-x-2 mb-6">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-                <Stethoscope className="text-primary-foreground h-6 w-6" />
-              </div>
-              <span className="text-2xl font-bold text-primary">IronLedger MedMap</span>
-            </div>
-            <h1 className="text-3xl font-bold text-foreground">Sign In</h1>
-            <p className="mt-2 text-muted-foreground">
-              Access your healthcare network
-            </p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center py-12 px-4" data-testid="page-login">
+      <div className="max-w-md w-full space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Welcome Back
+          </h1>
+          <p className="text-muted-foreground">
+            Sign in to your IronLedger MedMap account
+          </p>
+        </div>
 
-          {/* Login Form */}
-          <Card className="shadow-lg" data-testid="card-login-form">
-            <CardHeader>
-              <CardTitle className="text-center text-xl">Welcome Back</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6" data-testid="form-login">
-                {error && (
-                  <Alert variant="destructive" data-testid="alert-login-error">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
+        {/* User Type Selection */}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={userType === 'patient' ? 'default' : 'outline'}
+            className="flex-1"
+            onClick={() => setUserType('patient')}
+            data-testid="button-select-patient"
+          >
+            <User className="h-4 w-4 mr-2" />
+            Patient
+          </Button>
+          <Button
+            type="button"
+            variant={userType === 'doctor' ? 'default' : 'outline'}
+            className="flex-1"
+            onClick={() => setUserType('doctor')}
+            data-testid="button-select-doctor"
+          >
+            <Stethoscope className="h-4 w-4 mr-2" />
+            Doctor
+          </Button>
+        </div>
 
+        {/* Login Form */}
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
+              {userType === 'doctor' ? (
+                <Stethoscope className="h-5 w-5 text-primary" />
+              ) : (
+                <User className="h-5 w-5 text-primary" />
+              )}
+              {userType === 'doctor' ? 'Doctor Login' : 'Patient Login'}
+            </CardTitle>
+            {userType === 'doctor' && (
+              <Badge variant="secondary" className="mx-auto">
+                <Shield className="h-3 w-3 mr-1" />
+                HPCSA Verified Only
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">
+                  <label htmlFor="email" className="text-sm font-medium text-foreground">
                     Email Address
-                  </Label>
+                  </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="email"
-                      name="email"
                       type="email"
-                      autoComplete="email"
-                      required
+                      placeholder="Enter your email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="your.email@example.com"
                       className="pl-10"
-                      data-testid="input-email"
+                      required
+                      data-testid="input-login-email"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">
+                  <label htmlFor="password" className="text-sm font-medium text-foreground">
                     Password
-                  </Label>
+                  </label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="password"
-                      name="password"
                       type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      required
+                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
                       className="pl-10 pr-10"
-                      data-testid="input-password"
+                      required
+                      data-testid="input-login-password"
                     />
                     <Button
                       type="button"
@@ -147,51 +153,77 @@ export default function Login() {
                       data-testid="button-toggle-password"
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
+                        <Eye className="h-4 w-4" />
                       )}
                     </Button>
                   </div>
                 </div>
+              </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loginMutation.isPending}
-                  data-testid="button-sign-in"
-                >
-                  {loginMutation.isPending ? 'Signing In...' : 'Sign In'}
-                </Button>
-              </form>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                size="lg"
+                disabled={isLoading}
+                data-testid="button-login-submit"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Signing In...
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </>
+                )}
+              </Button>
 
-              <div className="mt-6">
-                <Separator className="mb-6" />
-                <div className="text-center text-sm">
-                  <span className="text-muted-foreground">Don't have an account? </span>
-                  <Link href="/signup" className="font-medium text-primary hover:underline" data-testid="link-signup">
-                    Sign up here
+              <div className="flex items-center justify-between text-sm">
+                <Link href="/forgot-password" className="text-primary hover:underline">
+                  Forgot password?
+                </Link>
+                {userType === 'doctor' && (
+                  <Link href="/doctor-verification" className="text-primary hover:underline">
+                    Need verification?
                   </Link>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Sign Up Link */}
+        <div className="text-center">
+          <p className="text-muted-foreground">
+            Don't have an account?{' '}
+            <Link href="/signup" className="text-primary hover:underline font-medium">
+              Sign up here
+            </Link>
+          </p>
+        </div>
+
+        {/* Security Notice for Doctors */}
+        {userType === 'doctor' && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex items-start space-x-3">
+                <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-primary mb-1">Security Notice</p>
+                  <p className="text-muted-foreground">
+                    All doctor accounts are subject to HPCSA verification and background checks. 
+                    Your credentials will be verified before account activation.
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          {/* Trust Indicators */}
-          <div className="flex items-center justify-center space-x-6 text-xs text-muted-foreground">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span>HPCSA Verified</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Lock className="h-4 w-4 text-blue-600" />
-              <span>Secure Platform</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
-
-      <Footer />
     </div>
   );
 }

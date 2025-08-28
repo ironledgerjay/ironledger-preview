@@ -5,12 +5,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import EmergencyButton from "@/components/EmergencyButton";
 
 import Index from "@/pages/Index";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import Membership from "@/pages/Membership";
 import SearchResults from "@/pages/SearchResults";
+import Emergency from "@/pages/Emergency";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import PaymentSuccess from "@/pages/PaymentSuccess";
@@ -25,6 +27,7 @@ function Router() {
       <Route path="/contact" component={Contact} />
       <Route path="/membership" component={Membership} />
       <Route path="/search" component={SearchResults} />
+      <Route path="/emergency" component={Emergency} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/payment/success" component={PaymentSuccess} />
@@ -46,6 +49,7 @@ function App() {
           <AuthProvider>
             <Toaster />
             <Router />
+            <EmergencyButton />
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>

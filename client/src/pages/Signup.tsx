@@ -1,319 +1,359 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { useMutation } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  Stethoscope, 
-  Eye, 
-  EyeOff, 
   Mail, 
   Lock, 
   User, 
-  Phone, 
+  Stethoscope, 
+  Eye, 
+  EyeOff,
+  ArrowRight,
+  Shield,
+  Phone,
   MapPin,
-  AlertCircle, 
-  CheckCircle,
-  Calendar
+  FileText,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 const provinces = [
-  'Western Cape',
-  'Gauteng',
-  'KwaZulu-Natal',
-  'Eastern Cape',
-  'Limpopo',
-  'Mpumalanga',
-  'North West',
-  'Free State',
-  'Northern Cape',
+  "Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", 
+  "Limpopo", "Mpumalanga", "Northern Cape", "North West", "Western Cape"
 ];
 
-const userRoles = [
-  { value: 'patient', label: 'Patient - Find and book doctors' },
-  { value: 'doctor', label: 'Doctor - Join our medical network' },
+const specialties = [
+  "General Practice", "Cardiology", "Dermatology", "Neurology", 
+  "Orthopedics", "Pediatrics", "Psychiatry", "Radiology", "Emergency Medicine", 
+  "Gynecology", "Ophthalmology", "Anesthesiology"
 ];
 
-interface SignupForm {
-  email: string;
-  password: string;
-  confirmPassword: string;
-  role: 'patient' | 'doctor' | '';
+interface SignupFormData {
   firstName: string;
   lastName: string;
+  email: string;
   phone: string;
+  password: string;
+  confirmPassword: string;
   province: string;
-  dateOfBirth: string;
-  specialty?: string; // For doctors
-  hpcsaNumber?: string; // For doctors
-  termsAccepted: boolean;
+  city: string;
+  specialty?: string;
+  hpcsaNumber?: string;
+  practiceAddress?: string;
+  bio?: string;
+  agreeToTerms: boolean;
 }
 
 export default function Signup() {
+  const [userType, setUserType] = useState<'patient' | 'doctor'>('patient');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<SignupFormData>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    province: '',
+    city: '',
+    specialty: '',
+    hpcsaNumber: '',
+    practiceAddress: '',
+    bio: '',
+    agreeToTerms: false,
+  });
+  
   const [, setLocation] = useLocation();
   const { signUp } = useAuth();
   const { toast } = useToast();
-  
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [form, setForm] = useState<SignupForm>({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: '',
-    firstName: '',
-    lastName: '',
-    phone: '',
-    province: '',
-    dateOfBirth: '',
-    specialty: '',
-    hpcsaNumber: '',
-    termsAccepted: false,
-  });
 
-  const signupMutation = useMutation({
-    mutationFn: async (data: SignupForm) => {
-      // First create the auth user
-      const authResult = await signUp(data.email, data.password);
-      if (authResult.error) {
-        throw new Error(authResult.error.message);
-      }
-
-      // Then create the profile
-      const profileData = {
-        email: data.email,
-        role: data.role,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone,
-        province: data.province,
-        dateOfBirth: data.dateOfBirth,
-        ...(data.role === 'doctor' && {
-          specialty: data.specialty,
-          hpcsaNumber: data.hpcsaNumber,
-        }),
-      };
-
-      return apiRequest('POST', '/api/users/profile', profileData);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Account created successfully!",
-        description: "Welcome to IronLedger MedMap. You can now start exploring our platform.",
-      });
-      setLocation('/');
-    },
-    onError: (error: Error) => {
-      setError(error.message);
-      toast({
-        title: "Signup failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    // Validation
-    if (!form.email || !form.password || !form.confirmPassword || !form.firstName || !form.lastName || !form.role) {
-      setError('Please fill in all required fields');
-      return;
-    }
-
-    if (!/\S+@\S+\.\S+/.test(form.email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    if (form.password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (form.role === 'doctor' && (!form.specialty || !form.hpcsaNumber)) {
-      setError('Doctors must provide specialty and HPCSA number');
-      return;
-    }
-
-    if (!form.termsAccepted) {
-      setError('Please accept the terms and conditions');
-      return;
-    }
-
-    signupMutation.mutate(form);
+  const handleChange = (field: keyof SignupFormData, value: string | boolean) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleChange = (field: keyof SignupForm, value: string | boolean) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.agreeToTerms) {
+      toast({
+        title: "Terms required",
+        description: "Please agree to the terms and conditions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await signUp(formData.email, formData.password);
+      
+      // Create user profile in database
+      const profileData = {
+        ...formData,
+        userType,
+        isVerified: userType === 'patient', // Patients auto-verified, doctors need manual verification
+      };
+
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profileData),
+      });
+
+      if (!response.ok) throw new Error('Failed to create profile');
+
+      toast({
+        title: userType === 'doctor' ? "Registration submitted!" : "Welcome aboard!",
+        description: userType === 'doctor' 
+          ? "Your doctor account is pending verification. You'll receive an email once approved."
+          : "Your account has been created successfully. Welcome to IronLedger MedMap!",
+      });
+      
+      setLocation(userType === 'doctor' ? '/verification-pending' : '/');
+    } catch (error) {
+      toast({
+        title: "Registration failed",
+        description: "Unable to create account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <div className="flex items-center justify-center py-20 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-2xl space-y-8">
-          {/* Logo and Title */}
-          <div className="text-center">
-            <div className="flex items-center justify-center space-x-2 mb-6">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-                <Stethoscope className="text-primary-foreground h-6 w-6" />
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 py-12 px-4" data-testid="page-signup">
+      <div className="max-w-2xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Join IronLedger MedMap
+          </h1>
+          <p className="text-muted-foreground">
+            Create your account to access quality healthcare across South Africa
+          </p>
+        </div>
+
+        {/* User Type Selection */}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={userType === 'patient' ? 'default' : 'outline'}
+            className="flex-1"
+            onClick={() => setUserType('patient')}
+            data-testid="button-select-patient"
+          >
+            <User className="h-4 w-4 mr-2" />
+            I'm a Patient
+          </Button>
+          <Button
+            type="button"
+            variant={userType === 'doctor' ? 'default' : 'outline'}
+            className="flex-1"
+            onClick={() => setUserType('doctor')}
+            data-testid="button-select-doctor"
+          >
+            <Stethoscope className="h-4 w-4 mr-2" />
+            I'm a Doctor
+          </Button>
+        </div>
+
+        {/* Signup Form */}
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
+              {userType === 'doctor' ? (
+                <Stethoscope className="h-5 w-5 text-primary" />
+              ) : (
+                <User className="h-5 w-5 text-primary" />
+              )}
+              {userType === 'doctor' ? 'Doctor Registration' : 'Patient Registration'}
+            </CardTitle>
+            {userType === 'doctor' && (
+              <div className="flex items-center justify-center gap-2">
+                <Badge variant="outline" className="text-orange-600 border-orange-200">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Verification Required
+                </Badge>
+                <Badge variant="secondary">
+                  <Shield className="h-3 w-3 mr-1" />
+                  HPCSA Verified
+                </Badge>
               </div>
-              <span className="text-2xl font-bold text-primary">IronLedger MedMap</span>
-            </div>
-            <h1 className="text-3xl font-bold text-foreground">Create Account</h1>
-            <p className="mt-2 text-muted-foreground">
-              Join South Africa's trusted medical network
-            </p>
-          </div>
-
-          {/* Signup Form */}
-          <Card className="shadow-lg" data-testid="card-signup-form">
-            <CardHeader>
-              <CardTitle className="text-center text-xl">Get Started</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6" data-testid="form-signup">
-                {error && (
-                  <Alert variant="destructive" data-testid="alert-signup-error">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Account Type */}
-                <div className="space-y-2">
-                  <Label htmlFor="role" className="text-sm font-medium">
-                    I am a... *
-                  </Label>
-                  <Select value={form.role} onValueChange={(value) => handleChange('role', value)}>
-                    <SelectTrigger data-testid="select-user-role">
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userRoles.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Personal Information */}
+            )}
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-sm font-medium">
+                    <label htmlFor="firstName" className="text-sm font-medium text-foreground">
                       First Name *
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="firstName"
-                        type="text"
-                        required
-                        value={form.firstName}
-                        onChange={(e) => handleChange('firstName', e.target.value)}
-                        placeholder="Enter your first name"
-                        className="pl-10"
-                        data-testid="input-first-name"
-                      />
-                    </div>
+                    </label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="Enter your first name"
+                      value={formData.firstName}
+                      onChange={(e) => handleChange('firstName', e.target.value)}
+                      required
+                      data-testid="input-signup-firstname"
+                    />
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm font-medium">
+                    <label htmlFor="lastName" className="text-sm font-medium text-foreground">
                       Last Name *
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="lastName"
-                        type="text"
-                        required
-                        value={form.lastName}
-                        onChange={(e) => handleChange('lastName', e.target.value)}
-                        placeholder="Enter your last name"
-                        className="pl-10"
-                        data-testid="input-last-name"
-                      />
-                    </div>
+                    </label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Enter your last name"
+                      value={formData.lastName}
+                      onChange={(e) => handleChange('lastName', e.target.value)}
+                      required
+                      data-testid="input-signup-lastname"
+                    />
                   </div>
                 </div>
 
-                {/* Contact Information */}
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">
+                  <label htmlFor="email" className="text-sm font-medium text-foreground">
                     Email Address *
-                  </Label>
+                  </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="email"
                       type="email"
-                      autoComplete="email"
-                      required
-                      value={form.email}
+                      placeholder="Enter your email"
+                      value={formData.email}
                       onChange={(e) => handleChange('email', e.target.value)}
-                      placeholder="your.email@example.com"
                       className="pl-10"
-                      data-testid="input-email"
+                      required
+                      data-testid="input-signup-email"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="phone" className="text-sm font-medium text-foreground">
+                    Phone Number *
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+27 XX XXX XXXX"
+                      value={formData.phone}
+                      onChange={(e) => handleChange('phone', e.target.value)}
+                      className="pl-10"
+                      required
+                      data-testid="input-signup-phone"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm font-medium">
-                      Phone Number
-                    </Label>
+                    <label htmlFor="password" className="text-sm font-medium text-foreground">
+                      Password *
+                    </label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="phone"
-                        type="tel"
-                        value={form.phone}
-                        onChange={(e) => handleChange('phone', e.target.value)}
-                        placeholder="+27 11 123 4567"
-                        className="pl-10"
-                        data-testid="input-phone"
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Create a password"
+                        value={formData.password}
+                        onChange={(e) => handleChange('password', e.target.value)}
+                        className="pl-10 pr-10"
+                        required
+                        data-testid="input-signup-password"
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="province" className="text-sm font-medium">
-                      Province
-                    </Label>
-                    <Select value={form.province} onValueChange={(value) => handleChange('province', value)}>
-                      <SelectTrigger data-testid="select-province">
-                        <SelectValue placeholder="Select province" />
+                    <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+                      Confirm Password *
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder="Confirm your password"
+                        value={formData.confirmPassword}
+                        onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                        className="pl-10 pr-10"
+                        required
+                        data-testid="input-signup-confirm-password"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-foreground flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  Location Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="province" className="text-sm font-medium text-foreground">
+                      Province *
+                    </label>
+                    <Select
+                      value={formData.province}
+                      onValueChange={(value) => handleChange('province', value)}
+                    >
+                      <SelectTrigger data-testid="select-signup-province">
+                        <SelectValue placeholder="Select your province" />
                       </SelectTrigger>
                       <SelectContent>
                         {provinces.map((province) => (
@@ -324,199 +364,175 @@ export default function Signup() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
 
-                {/* Date of Birth */}
-                <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth" className="text-sm font-medium">
-                    Date of Birth
-                  </Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <div className="space-y-2">
+                    <label htmlFor="city" className="text-sm font-medium text-foreground">
+                      City *
+                    </label>
                     <Input
-                      id="dateOfBirth"
-                      type="date"
-                      value={form.dateOfBirth}
-                      onChange={(e) => handleChange('dateOfBirth', e.target.value)}
-                      className="pl-10"
-                      data-testid="input-date-of-birth"
+                      id="city"
+                      type="text"
+                      placeholder="Enter your city"
+                      value={formData.city}
+                      onChange={(e) => handleChange('city', e.target.value)}
+                      required
+                      data-testid="input-signup-city"
                     />
                   </div>
                 </div>
+              </div>
 
-                {/* Doctor-specific fields */}
-                {form.role === 'doctor' && (
-                  <div className="space-y-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
-                    <h3 className="font-semibold text-primary">Medical Professional Information</h3>
-                    
+              {/* Doctor-specific fields */}
+              {userType === 'doctor' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-foreground flex items-center gap-2">
+                    <Stethoscope className="h-5 w-5 text-primary" />
+                    Professional Information
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="specialty" className="text-sm font-medium">
+                      <label htmlFor="specialty" className="text-sm font-medium text-foreground">
                         Medical Specialty *
-                      </Label>
-                      <Input
-                        id="specialty"
-                        type="text"
-                        required={form.role === 'doctor'}
-                        value={form.specialty}
-                        onChange={(e) => handleChange('specialty', e.target.value)}
-                        placeholder="e.g., Cardiology, General Practice"
-                        data-testid="input-specialty"
-                      />
+                      </label>
+                      <Select
+                        value={formData.specialty}
+                        onValueChange={(value) => handleChange('specialty', value)}
+                      >
+                        <SelectTrigger data-testid="select-signup-specialty">
+                          <SelectValue placeholder="Select your specialty" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {specialties.map((specialty) => (
+                            <SelectItem key={specialty} value={specialty}>
+                              {specialty}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="hpcsaNumber" className="text-sm font-medium">
-                        HPCSA Registration Number *
-                      </Label>
+                      <label htmlFor="hpcsaNumber" className="text-sm font-medium text-foreground">
+                        HPCSA Number *
+                      </label>
                       <Input
                         id="hpcsaNumber"
                         type="text"
-                        required={form.role === 'doctor'}
-                        value={form.hpcsaNumber}
-                        onChange={(e) => handleChange('hpcsaNumber', e.target.value)}
                         placeholder="Enter your HPCSA number"
-                        data-testid="input-hpcsa-number"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Password */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="text-sm font-medium">
-                      Password *
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
+                        value={formData.hpcsaNumber}
+                        onChange={(e) => handleChange('hpcsaNumber', e.target.value)}
                         required
-                        value={form.password}
-                        onChange={(e) => handleChange('password', e.target.value)}
-                        placeholder="Create a strong password"
-                        className="pl-10 pr-10"
-                        data-testid="input-password"
+                        data-testid="input-signup-hpcsa"
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
-                        data-testid="button-toggle-password"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-sm font-medium">
-                      Confirm Password *
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        required
-                        value={form.confirmPassword}
-                        onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                        placeholder="Confirm your password"
-                        className="pl-10 pr-10"
-                        data-testid="input-confirm-password"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        data-testid="button-toggle-confirm-password"
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Terms and Conditions */}
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="terms"
-                    checked={form.termsAccepted}
-                    onCheckedChange={(checked) => handleChange('termsAccepted', checked === true)}
-                    data-testid="checkbox-terms"
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <label
-                      htmlFor="terms"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      I accept the terms and conditions
+                    <label htmlFor="practiceAddress" className="text-sm font-medium text-foreground">
+                      Practice Address
                     </label>
-                    <p className="text-xs text-muted-foreground">
-                      By creating an account, you agree to our{' '}
-                      <Link href="/terms" className="underline hover:text-primary">
-                        Terms of Service
-                      </Link>{' '}
-                      and{' '}
-                      <Link href="/privacy" className="underline hover:text-primary">
-                        Privacy Policy
-                      </Link>
-                    </p>
+                    <Textarea
+                      id="practiceAddress"
+                      placeholder="Enter your practice address"
+                      value={formData.practiceAddress}
+                      onChange={(e) => handleChange('practiceAddress', e.target.value)}
+                      rows={3}
+                      data-testid="textarea-signup-practice-address"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="bio" className="text-sm font-medium text-foreground">
+                      Professional Bio
+                    </label>
+                    <Textarea
+                      id="bio"
+                      placeholder="Tell patients about your experience and qualifications..."
+                      value={formData.bio}
+                      onChange={(e) => handleChange('bio', e.target.value)}
+                      rows={4}
+                      data-testid="textarea-signup-bio"
+                    />
                   </div>
                 </div>
+              )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={signupMutation.isPending}
-                  data-testid="button-create-account"
-                >
-                  {signupMutation.isPending ? 'Creating Account...' : 'Create Account'}
-                </Button>
-              </form>
-
-              <div className="mt-6">
-                <Separator className="mb-6" />
-                <div className="text-center text-sm">
-                  <span className="text-muted-foreground">Already have an account? </span>
-                  <Link href="/login" className="font-medium text-primary hover:underline" data-testid="link-login">
-                    Sign in here
+              {/* Terms and Conditions */}
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="agreeToTerms"
+                  checked={formData.agreeToTerms}
+                  onCheckedChange={(checked) => handleChange('agreeToTerms', !!checked)}
+                  data-testid="checkbox-terms"
+                />
+                <label htmlFor="agreeToTerms" className="text-sm text-muted-foreground leading-tight">
+                  I agree to the{' '}
+                  <Link href="/terms" className="text-primary hover:underline">
+                    Terms and Conditions
                   </Link>
+                  {' '}and{' '}
+                  <Link href="/privacy" className="text-primary hover:underline">
+                    Privacy Policy
+                  </Link>
+                </label>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full" 
+                size="lg"
+                disabled={isLoading}
+                data-testid="button-signup-submit"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Creating Account...
+                  </>
+                ) : (
+                  <>
+                    Create Account
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Login Link */}
+        <div className="text-center">
+          <p className="text-muted-foreground">
+            Already have an account?{' '}
+            <Link href="/login" className="text-primary hover:underline font-medium">
+              Sign in here
+            </Link>
+          </p>
+        </div>
+
+        {/* Doctor Verification Notice */}
+        {userType === 'doctor' && (
+          <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-orange-800 dark:text-orange-200 mb-2">
+                    Doctor Account Verification Process
+                  </p>
+                  <ul className="space-y-1 text-orange-700 dark:text-orange-300">
+                    <li>• Your HPCSA number will be verified with the Health Professions Council</li>
+                    <li>• Background checks will be conducted for patient safety</li>
+                    <li>• You'll receive an email once verification is complete (3-5 business days)</li>
+                    <li>• Your profile will be visible to patients only after approval</li>
+                  </ul>
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          {/* Trust Indicators */}
-          <div className="flex items-center justify-center space-x-6 text-xs text-muted-foreground">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span>HPCSA Verified Doctors</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Lock className="h-4 w-4 text-blue-600" />
-              <span>PayFast Secure Payments</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
-
-      <Footer />
     </div>
   );
 }

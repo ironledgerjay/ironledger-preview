@@ -864,12 +864,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/doctor/:doctorId", async (req, res) => {
     try {
       const { doctorId } = req.params;
-      const doctor = await storage.getDoctor(doctorId);
+      console.log(`Fetching doctor with ID: ${doctorId}`);
+      
+      // Try to get doctor by doctor ID first
+      let doctor = await storage.getDoctor(doctorId);
+      
+      // If not found by doctor ID, try to get by user ID from all doctors
+      if (!doctor) {
+        const doctors = await storage.getAllDoctors();
+        doctor = doctors.find(d => d.userId === doctorId || d.id === doctorId);
+        console.log(`Available doctors: ${doctors.map(d => `${d.id} (${d.firstName} ${d.lastName})`).join(', ')}`);
+      }
       
       if (!doctor) {
+        console.log(`Doctor not found with ID: ${doctorId}`);
         return res.status(404).json({ error: "Doctor not found" });
       }
       
+      console.log(`Found doctor: ${doctor.firstName} ${doctor.lastName} (ID: ${doctor.id})`);
       res.json(doctor);
     } catch (error) {
       console.error("Error fetching doctor:", error);

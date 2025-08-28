@@ -63,10 +63,25 @@ export default function BookAppointment() {
   });
 
   // Fetch doctor details
-  const { data: doctor, isLoading: doctorLoading } = useQuery<Doctor>({
+  const { data: doctor, isLoading: doctorLoading, error: doctorError } = useQuery<Doctor>({
     queryKey: [`/api/doctor/${doctorId}`],
     enabled: !!doctorId,
   });
+
+  // Show error if doctor not found
+  if (doctorError) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Doctor Not Found</h1>
+            <p className="text-gray-600 mb-4">The doctor you're looking for doesn't exist or has been removed.</p>
+            <BackButton fallbackPath="/doctors">Return to Doctor Search</BackButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Fetch user membership info
   const { data: membership } = useQuery({

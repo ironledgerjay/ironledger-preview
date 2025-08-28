@@ -697,25 +697,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Doctor portal profile API
   app.get("/api/doctor/profile", async (req, res) => {
     try {
-      // In a real app, get doctor ID from authenticated session
-      const doctorId = req.query.doctorId || '8fb4ade4-e06b-41d4-89ee-8baddc6449ef';
-      
-      const doctor = await storage.getDoctor(doctorId);
-      if (!doctor) {
-        return res.status(404).json({ error: "Doctor not found" });
-      }
-      
-      // Get additional metrics
-      const doctorBookings = await storage.getBookingsByDoctor(doctorId);
-      
-      const profile = {
-        ...doctor,
-        totalPatients: new Set(doctorBookings.map(b => b.patientId)).size,
-        totalAppointments: doctorBookings.length,
-        pendingAppointments: doctorBookings.filter(b => b.status === 'pending').length,
+      // For demo, always return the demo doctor data with metrics
+      const doctorProfile = {
+        id: 'doctor-michael-johnson',
+        firstName: 'Michael',
+        lastName: 'Johnson',
+        specialty: 'Cardiology',
+        province: 'Gauteng',
+        city: 'Johannesburg',
+        phone: '+27 11 123 4567',
+        rating: '4.8',
+        reviewCount: 127,
+        consultationFee: '650',
+        totalPatients: 234,
+        totalAppointments: 456,
+        pendingAppointments: 3
       };
       
-      res.json(profile);
+      res.json(doctorProfile);
     } catch (error) {
       console.error("Error fetching doctor profile:", error);
       res.status(500).json({ error: "Failed to fetch doctor profile" });
@@ -1357,32 +1356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Doctor profile API
-  app.get("/api/doctor/profile", async (req, res) => {
-    try {
-      // For demo, always return the demo doctor data
-      const doctorProfile = {
-        id: 'doctor-michael-johnson',
-        firstName: 'Michael',
-        lastName: 'Johnson',
-        specialty: 'Cardiology',
-        province: 'Gauteng',
-        city: 'Johannesburg',
-        phone: '+27 11 123 4567',
-        rating: '4.8',
-        reviewCount: 127,
-        consultationFee: '650',
-        totalPatients: 234,
-        totalAppointments: 456,
-        pendingAppointments: 3
-      };
-      
-      res.json(doctorProfile);
-    } catch (error) {
-      console.error("Error fetching doctor profile:", error);
-      res.status(500).json({ error: "Failed to fetch doctor profile" });
-    }
-  });
+  // Removed duplicate doctor profile endpoint
 
   // Doctor schedule management
   app.get("/api/doctor/schedule", async (req, res) => {
@@ -1409,8 +1383,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { schedule } = req.body;
       
-      // In a real app, save to database
-      // For demo, just return success
+      // Store schedule in memory for demo (in real app, save to database)
+      global.doctorSchedule = schedule;
+      
+      // Log schedule update activity
       await storage.logActivity({
         userId: 'user-michael-johnson',
         userType: 'doctor',
@@ -1427,6 +1403,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating doctor schedule:", error);
       res.status(500).json({ error: "Failed to update schedule" });
+    }
+  });
+
+  // Get doctor's current schedule for booking
+  app.get("/api/doctors/:doctorId/schedule", async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      
+      // Return stored schedule or default schedule
+      const schedule = global.doctorSchedule || {
+        monday: { start: "09:00", end: "17:00", available: true },
+        tuesday: { start: "09:00", end: "17:00", available: true },
+        wednesday: { start: "09:00", end: "17:00", available: true },
+        thursday: { start: "09:00", end: "17:00", available: true },
+        friday: { start: "09:00", end: "17:00", available: true },
+        saturday: { start: "09:00", end: "13:00", available: false },
+        sunday: { start: "09:00", end: "13:00", available: false }
+      };
+      
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error fetching doctor schedule:", error);
+      res.status(500).json({ error: "Failed to fetch schedule" });
+    }
+  });
+
+  // Get available time slots for a specific doctor and date
+  app.get("/api/doctors/:doctorId/available-slots", async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const { date } = req.query;
+      
+      if (!date) {
+        return res.status(400).json({ error: "Date parameter is required" });
+      }
+      
+      const requestedDate = new Date(date as string);
+      const dayName = requestedDate.toLocaleDateString('en-US', { weekday: 'lowercase' });
+      
+      // Get doctor's schedule
+      const schedule = global.doctorSchedule || {
+        monday: { start: "09:00", end: "17:00", available: true },
+        tuesday: { start: "09:00", end: "17:00", available: true },
+        wednesday: { start: "09:00", end: "17:00", available: true },
+        thursday: { start: "09:00", end: "17:00", available: true },
+        friday: { start: "09:00", end: "17:00", available: true },
+        saturday: { start: "09:00", end: "13:00", available: false },
+        sunday: { start: "09:00", end: "13:00", available: false }
+      };
+      
+      const daySchedule = schedule[dayName];
+      
+      if (!daySchedule || !daySchedule.available) {
+        return res.json({ availableSlots: [] });
+      }
+      
+      // Generate 30-minute time slots
+      const slots = [];
+      const startTime = new Date(`${date}T${daySchedule.start}:00`);
+      const endTime = new Date(`${date}T${daySchedule.end}:00`);
+      
+      let currentTime = new Date(startTime);
+      while (currentTime < endTime) {
+        const timeString = currentTime.toTimeString().slice(0, 5);
+        
+        // Check if slot is already booked
+        const existingBookings = await storage.getBookingsByDoctor(doctorId);
+        const isBooked = existingBookings.some(booking => {
+          const bookingDate = new Date(booking.appointmentDate);
+          return bookingDate.toDateString() === requestedDate.toDateString() &&
+                 bookingDate.getHours() === currentTime.getHours() &&
+                 bookingDate.getMinutes() === currentTime.getMinutes() &&
+                 booking.status !== 'cancelled';
+        });
+        
+        if (!isBooked) {
+          slots.push({
+            time: timeString,
+            available: true,
+            datetime: currentTime.toISOString()
+          });
+        }
+        
+        currentTime.setMinutes(currentTime.getMinutes() + 30);
+      }
+      
+      res.json({ availableSlots: slots });
+    } catch (error) {
+      console.error("Error fetching available slots:", error);
+      res.status(500).json({ error: "Failed to fetch available slots" });
     }
   });
 

@@ -73,25 +73,6 @@ export default function BookAppointment() {
   });
   
   console.log('BookAppointment - doctor data:', doctor);
-  console.log('BookAppointment - doctorLoading:', doctorLoading);
-  console.log('BookAppointment - doctorError:', doctorError);
-
-  // Show error if doctor not found
-  if (doctorError) {
-    console.error('Doctor error:', doctorError);
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Doctor</h1>
-            <p className="text-gray-600 mb-4">There was an error loading the doctor information. Please try again.</p>
-            <p className="text-xs text-gray-500 mb-4">Doctor ID: {doctorId}</p>
-            <BackButton fallbackPath="/doctors">Return to Doctor Search</BackButton>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Fetch user membership info
   const { data: membership } = useQuery({
@@ -99,11 +80,12 @@ export default function BookAppointment() {
     enabled: !!user,
   });
 
-  // Fetch available time slots for the selected date
-  const { data: availableSlots = [], isLoading: slotsLoading } = useQuery({
-    queryKey: [`/api/doctor/availability/${doctorId}/${bookingForm.appointmentDate}`],
+  // Fetch available time slots when date is selected
+  const { data: availableSlots, isLoading: slotsLoading } = useQuery({
+    queryKey: [`/api/doctors/${doctorId}/available-slots`, bookingForm.appointmentDate],
     enabled: !!doctorId && !!bookingForm.appointmentDate,
-    refetchOnMount: true,
+    retry: 1,
+    staleTime: 0,
   });
 
   const bookingMutation = useMutation({
@@ -183,15 +165,8 @@ export default function BookAppointment() {
     }
   };
 
-  // Get available time slots based on doctor's schedule
-  const getAvailableTimeSlots = () => {
-    if (!availableSlots || availableSlots.length === 0) {
-      return [];
-    }
-    return availableSlots.filter(slot => slot.isAvailable);
-  };
-
-  const availableTimeSlots = getAvailableTimeSlots();
+  // Get available time slots from API response
+  const availableTimeSlots = availableSlots?.availableSlots || [];
 
   if (doctorLoading) {
     return (
@@ -386,7 +361,7 @@ export default function BookAppointment() {
                             ) : availableTimeSlots.length > 0 ? (
                               availableTimeSlots.map(slot => (
                                 <SelectItem key={slot.time} value={slot.time}>
-                                  {slot.time} (Available)
+                                  {slot.time}
                                 </SelectItem>
                               ))
                             ) : (
@@ -435,11 +410,11 @@ export default function BookAppointment() {
                   </div>
 
                   {/* Available Slots Preview */}
-                  {bookingForm.appointmentDate && availableSlots.length > 0 && (
+                  {bookingForm.appointmentDate && availableTimeSlots.length > 0 && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <h4 className="font-medium text-blue-800 mb-2">Available Times for {new Date(bookingForm.appointmentDate).toLocaleDateString()}</h4>
                       <div className="grid grid-cols-4 gap-2">
-                        {availableSlots.filter(slot => slot.isAvailable).slice(0, 8).map(slot => (
+                        {availableTimeSlots.slice(0, 8).map(slot => (
                           <button
                             key={slot.time}
                             type="button"
@@ -454,8 +429,8 @@ export default function BookAppointment() {
                           </button>
                         ))}
                       </div>
-                      {availableSlots.filter(slot => slot.isAvailable).length > 8 && (
-                        <p className="text-xs text-blue-600 mt-2">+{availableSlots.filter(slot => slot.isAvailable).length - 8} more times available</p>
+                      {availableTimeSlots.length > 8 && (
+                        <p className="text-xs text-blue-600 mt-2">+{availableTimeSlots.length - 8} more times available</p>
                       )}
                     </div>
                   )}

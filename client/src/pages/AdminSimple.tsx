@@ -60,6 +60,20 @@ export default function AdminSimple() {
   const [secretPhrase, setSecretPhrase] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'payments' | 'stats' | 'enroll'>('pending');
+  
+  // Enrollment form state
+  const [enrollmentForm, setEnrollmentForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    specialization: '',
+    hpcsaNumber: '',
+    practiceLocation: '',
+    yearsExperience: '',
+    medicalSchool: '',
+    notes: ''
+  });
 
   // All queries - always called
   const { data: pendingDoctors = [], isLoading: loadingPending } = useQuery<Doctor[]>({
@@ -125,6 +139,44 @@ export default function AdminSimple() {
     },
   });
 
+  const enrollDoctor = useMutation({
+    mutationFn: async (formData: typeof enrollmentForm) => {
+      const response = await fetch('/api/admin/enroll-doctor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/stats'] });
+      toast({
+        title: "Doctor Enrolled Successfully",
+        description: `Dr. ${enrollmentForm.firstName} ${enrollmentForm.lastName} has been enrolled and is now visible on the platform.`,
+      });
+      // Reset form
+      setEnrollmentForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        specialization: '',
+        hpcsaNumber: '',
+        practiceLocation: '',
+        yearsExperience: '',
+        medicalSchool: '',
+        notes: ''
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Enrollment Failed",
+        description: "Failed to enroll doctor. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Event handlers
   const handleAdminAuth = () => {
     setIsAuthenticating(true);
@@ -152,6 +204,22 @@ export default function AdminSimple() {
     }
     const reason = prompt('Please provide a reason for account removal:') || 'Policy violation';
     removeUser.mutate({ userId, reason });
+  };
+
+  const handleEnrollmentFormChange = (field: string, value: string) => {
+    setEnrollmentForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEnrollDoctor = () => {
+    if (!enrollmentForm.firstName || !enrollmentForm.lastName || !enrollmentForm.email || !enrollmentForm.specialization) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in at least the doctor's name, email, and specialization.",
+        variant: "destructive",
+      });
+      return;
+    }
+    enrollDoctor.mutate(enrollmentForm);
   };
 
   // Show authentication screen if not authenticated
@@ -413,61 +481,109 @@ export default function AdminSimple() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">First Name</label>
-                      <Input placeholder="Dr. Sarah" />
+                      <Input 
+                        placeholder="Sarah" 
+                        value={enrollmentForm.firstName}
+                        onChange={(e) => handleEnrollmentFormChange('firstName', e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Last Name</label>
-                      <Input placeholder="Mthembu" />
+                      <Input 
+                        placeholder="Mthembu" 
+                        value={enrollmentForm.lastName}
+                        onChange={(e) => handleEnrollmentFormChange('lastName', e.target.value)}
+                      />
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Email Address</label>
-                      <Input placeholder="dr.sarah@example.com" type="email" />
+                      <Input 
+                        placeholder="dr.sarah@example.com" 
+                        type="email" 
+                        value={enrollmentForm.email}
+                        onChange={(e) => handleEnrollmentFormChange('email', e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Phone Number</label>
-                      <Input placeholder="+27 11 123 4567" />
+                      <Input 
+                        placeholder="+27 11 123 4567" 
+                        value={enrollmentForm.phone}
+                        onChange={(e) => handleEnrollmentFormChange('phone', e.target.value)}
+                      />
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Medical Specialization</label>
-                      <Input placeholder="Cardiologist" />
+                      <Input 
+                        placeholder="Cardiologist" 
+                        value={enrollmentForm.specialization}
+                        onChange={(e) => handleEnrollmentFormChange('specialization', e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">HPCSA Registration Number</label>
-                      <Input placeholder="MP123456" />
+                      <Input 
+                        placeholder="MP123456" 
+                        value={enrollmentForm.hpcsaNumber}
+                        onChange={(e) => handleEnrollmentFormChange('hpcsaNumber', e.target.value)}
+                      />
                     </div>
                   </div>
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Practice Location</label>
-                    <Input placeholder="Johannesburg, Gauteng" />
+                    <Input 
+                      placeholder="Johannesburg, Gauteng" 
+                      value={enrollmentForm.practiceLocation}
+                      onChange={(e) => handleEnrollmentFormChange('practiceLocation', e.target.value)}
+                    />
                   </div>
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Years of Experience</label>
-                    <Input placeholder="15" type="number" min="1" max="50" />
+                    <Input 
+                      placeholder="15" 
+                      type="number" 
+                      min="1" 
+                      max="50" 
+                      value={enrollmentForm.yearsExperience}
+                      onChange={(e) => handleEnrollmentFormChange('yearsExperience', e.target.value)}
+                    />
                   </div>
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Medical School</label>
-                    <Input placeholder="University of the Witwatersrand" />
+                    <Input 
+                      placeholder="University of the Witwatersrand" 
+                      value={enrollmentForm.medicalSchool}
+                      onChange={(e) => handleEnrollmentFormChange('medicalSchool', e.target.value)}
+                    />
                   </div>
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Additional Notes</label>
-                    <Input placeholder="Pre-verified credentials, direct enrollment approved by admin" />
+                    <Input 
+                      placeholder="Pre-verified credentials, direct enrollment approved by admin" 
+                      value={enrollmentForm.notes}
+                      onChange={(e) => handleEnrollmentFormChange('notes', e.target.value)}
+                    />
                   </div>
                   
                   <div className="flex gap-3 pt-4">
-                    <Button className="flex-1 bg-blue-600 hover:bg-blue-700">
-                      Enroll Doctor Immediately
+                    <Button 
+                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                      onClick={handleEnrollDoctor}
+                      disabled={enrollDoctor.isPending}
+                    >
+                      {enrollDoctor.isPending ? "Enrolling..." : "Enroll Doctor Immediately"}
                     </Button>
-                    <Button variant="outline" className="flex-1">
+                    <Button variant="outline" className="flex-1" disabled={enrollDoctor.isPending}>
                       Save as Draft
                     </Button>
                   </div>

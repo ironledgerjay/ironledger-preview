@@ -828,6 +828,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual doctor enrollment API - Admin only
+  app.post("/api/admin/enroll-doctor", async (req, res) => {
+    try {
+      const {
+        firstName,
+        lastName,
+        email,
+        phone,
+        specialization,
+        hpcsaNumber,
+        practiceLocation,
+        yearsExperience,
+        medicalSchool,
+        notes
+      } = req.body;
+
+      // Create doctor profile with pre-approved status
+      const doctorData = {
+        firstName,
+        lastName,
+        email,
+        phone,
+        specialty: specialization,
+        hpcsaRegistration: hpcsaNumber,
+        practiceAddress: practiceLocation,
+        medicalSchool,
+        experience: yearsExperience,
+        isVerified: true, // Pre-approved through admin enrollment
+        consultationFee: '500', // Default fee
+        rating: '5.0', // Start with perfect rating
+        reviewCount: 0,
+        province: practiceLocation?.includes('Gauteng') ? 'Gauteng' : 
+                 practiceLocation?.includes('Cape') ? 'Western Cape' : 
+                 practiceLocation?.includes('Durban') ? 'KwaZulu-Natal' : 'Gauteng',
+        city: practiceLocation?.includes('Johannesburg') ? 'Johannesburg' :
+              practiceLocation?.includes('Cape Town') ? 'Cape Town' :
+              practiceLocation?.includes('Durban') ? 'Durban' : 'Johannesburg',
+        zipCode: '2000',
+        bio: `Dr. ${firstName} ${lastName} is a qualified ${specialization} with ${yearsExperience} years of experience. Graduated from ${medicalSchool}. ${notes || 'Available for consultations.'}`,
+        availability: JSON.stringify([
+          { day: 'Monday', slots: ['09:00', '11:00', '14:00', '16:00'] },
+          { day: 'Tuesday', slots: ['09:00', '11:00', '14:00', '16:00'] },
+          { day: 'Wednesday', slots: ['09:00', '11:00', '14:00', '16:00'] },
+          { day: 'Thursday', slots: ['09:00', '11:00', '14:00', '16:00'] },
+          { day: 'Friday', slots: ['09:00', '11:00', '14:00', '16:00'] }
+        ])
+      };
+
+      const doctor = await storage.createDoctor(doctorData);
+
+      // Log enrollment activity
+      await storage.logActivity({
+        userId: doctor.id,
+        userType: 'admin',
+        action: 'manual_doctor_enrollment',
+        page: 'admin_enrollment',
+        details: {
+          doctorId: doctor.id,
+          doctorEmail: email,
+          specialization,
+          enrolledAt: new Date().toISOString(),
+          adminEnrollment: true,
+          notes: notes || 'Manual enrollment by admin'
+        },
+        source: 'admin_panel',
+      });
+
+      // Create system notification
+      await storage.createSystemNotification({
+        type: 'doctor_enrolled',
+        title: 'Doctor Manually Enrolled',
+        message: `Dr. ${firstName} ${lastName} (${specialization}) has been enrolled directly by admin`,
+        targetSystem: 'admin_crm',
+        metadata: JSON.stringify({
+          doctorId: doctor.id,
+          doctorEmail: email,
+          specialization,
+          adminEnrollment: true
+        }),
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Doctor enrolled successfully',
+        doctor: {
+          id: doctor.id,
+          name: `Dr. ${firstName} ${lastName}`,
+          specialization,
+          email,
+          isVerified: true
+        }
+      });
+    } catch (error) {
+      console.error('Doctor enrollment error:', error);
+      res.status(500).json({ message: 'Failed to enroll doctor' });
+    }
+  });
+
   // Doctor search API - Returns verified doctors based on filters
   app.get("/api/doctors", async (req, res) => {
     try {

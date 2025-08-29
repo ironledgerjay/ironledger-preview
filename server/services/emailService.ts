@@ -1,10 +1,11 @@
 import sgMail from '@sendgrid/mail';
 
-if (!process.env.SENDGRID_API_KEY) {
-  throw new Error("SENDGRID_API_KEY environment variable must be set");
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+} else {
+  console.warn("SENDGRID_API_KEY not set. Email sending is disabled in this environment.");
 }
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 interface EmailTemplate {
   to: string;

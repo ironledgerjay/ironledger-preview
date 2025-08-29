@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { z } from "zod";
 import { storage } from "./storage";
 import { insertUserSchema, insertPatientSchema, insertDoctorSchema, insertBookingSchema, insertPaymentSchema } from "@shared/schema";
@@ -1576,5 +1577,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+
+  // WebSocket server for real-time updates on distinct path
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store active WebSocket connections by type
+  const connections = {
+    doctors: new Map<string, WebSocket>(),
+    patients: new Map<string, WebSocket>(),
+    admin: new Set<WebSocket>()
+  };
+
+  wss.on('connection', (ws, request) => {
+    console.log('New WebSocket connection established');
+    
+    // Handle authentication and connection type
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        
+        switch (data.type) {
+          case 'register_doctor':
+            connections.doctors.set(data.doctorId, ws);
+            console.log(`Doctor ${data.doctorId} connected to real-time updates`);
+            break;
+            
+          case 'register_patient':
+            connections.patients.set(data.patientId, ws);
+            console.log(`Patient ${data.patientId} connected to real-time updates`);
+            break;
+            
+          case 'register_admin':
+            connections.admin.add(ws);
+            console.log('Admin connected to real-time updates');
+            break;
+            
+          case 'booking_update':
+            // Broadcast booking updates to relevant parties
+            broadcastBookingUpdate(data);
+            break;
+            
+          case 'schedule_update':
+            // Broadcast schedule changes to booking pages
+            broadcastScheduleUpdate(data);
+            break;
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+
+    ws.on('close', () => {
+      // Clean up connections
+      connections.doctors.forEach((conn, doctorId) => {
+        if (conn === ws) connections.doctors.delete(doctorId);
+      });
+      connections.patients.forEach((conn, patientId) => {
+        if (conn === ws) connections.patients.delete(patientId);
+      });
+      connections.admin.delete(ws);
+      console.log('WebSocket connection closed');
+    });
+  });
+
+  // Broadcast functions for real-time updates
+  function broadcastBookingUpdate(data: any) {
+    const message = JSON.stringify({
+      type: 'booking_update',
+      ...data,
+      timestamp: new Date().toISOString()
+    });
+
+    // Notify doctor
+    const doctorWs = connections.doctors.get(data.doctorId);
+    if (doctorWs && doctorWs.readyState === WebSocket.OPEN) {
+      doctorWs.send(message);
+    }
+
+    // Notify patient
+    const patientWs = connections.patients.get(data.patientId);
+    if (patientWs && patientWs.readyState === WebSocket.OPEN) {
+      patientWs.send(message);
+    }
+
+    // Notify all admin connections
+    connections.admin.forEach(adminWs => {
+      if (adminWs.readyState === WebSocket.OPEN) {
+        adminWs.send(message);
+      }
+    });
+  }
+
+  function broadcastScheduleUpdate(data: any) {
+    const message = JSON.stringify({
+      type: 'schedule_update',
+      ...data,
+      timestamp: new Date().toISOString()
+    });
+
+    // Notify all connected clients (especially booking pages)
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
+
+  // Enhanced booking creation with real-time notifications
+  app.post("/api/bookings/real-time", async (req, res) => {
+    try {
+      const bookingData = req.body;
+      const booking = await storage.createBooking(bookingData);
+      
+      // Broadcast real-time notification
+      broadcastBookingUpdate({
+        action: 'booking_created',
+        bookingId: booking.id,
+        doctorId: booking.doctorId,
+        patientId: booking.patientId,
+        appointmentDate: booking.appointmentDate,
+        patientName: booking.patientName,
+        status: booking.status
+      });
+      
+      res.json(booking);
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      res.status(500).json({ error: "Failed to create booking" });
+    }
+  });
+
+  // Enhanced schedule update with real-time broadcasting
+  const originalScheduleUpdate = app._router.stack.find(
+    (layer: any) => layer.route?.path === '/api/doctor/schedule' && layer.route?.methods?.put
+  );
+
+  if (originalScheduleUpdate) {
+    // Override the schedule update to include real-time broadcasting
+    app.put("/api/doctor/schedule", async (req, res) => {
+      try {
+        const { schedule, doctorId } = req.body;
+        doctorSchedules.set(doctorId, schedule);
+        
+        // Broadcast schedule update to all clients
+        broadcastScheduleUpdate({
+          action: 'schedule_updated',
+          doctorId,
+          schedule,
+          message: 'Doctor schedule updated - refreshing available slots'
+        });
+        
+        await storage.logActivity({
+          userId: 'user-michael-johnson',
+          userType: 'doctor',
+          action: 'schedule_updated',
+          page: 'doctor_portal',
+          details: { doctorId, schedule, timestamp: new Date().toISOString() },
+          source: 'doctor_portal',
+        });
+        
+        res.json({ message: "Schedule updated successfully", schedule, doctorId });
+      } catch (error) {
+        console.error("Error updating doctor schedule:", error);
+        res.status(500).json({ error: "Failed to update schedule" });
+      }
+    });
+  }
+
   return httpServer;
 }

@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar, Users, Clock, CheckCircle, XCircle, BarChart3, Star, Phone, MapPin, Settings } from 'lucide-react';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { useToast } from '@/hooks/use-toast';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 interface DoctorProfile {
   id: string;
@@ -50,6 +51,10 @@ interface Analytics {
 export default function DoctorPortal() {
   useActivityLogger('doctor_portal');
   const { toast } = useToast();
+  
+  // Real-time WebSocket for doctor updates
+  const { isConnected, lastMessage, sendMessage } = useWebSocket('doctor', 'doctor-michael-johnson');
+  
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [schedule, setSchedule] = useState({

@@ -14,6 +14,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { Calendar, Clock, MapPin, Star, Phone, DollarSign } from 'lucide-react';
 import BackButton from '@/components/BackButton';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 interface Doctor {
   id: string;
@@ -64,6 +65,9 @@ export default function BookAppointment() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { generatePaymentURL } = usePayFast();
+  
+  // Real-time WebSocket connection for booking updates
+  const { isConnected, lastMessage } = useWebSocket('patient', user?.id);
 
   const [bookingForm, setBookingForm] = useState<BookingForm>({
     patientName: '',

@@ -92,13 +92,27 @@ export default function BookAppointment() {
     retry: false,
   });
 
-  // Fetch available time slots when date is selected
-  const { data: availableSlots, isLoading: slotsLoading } = useQuery({
+  // Fetch available time slots when date is selected - Force fresh data
+  const { data: availableSlots, isLoading: slotsLoading, refetch: refetchSlots } = useQuery({
     queryKey: [`/api/doctors/${doctorId}/available-slots`, bookingForm.appointmentDate],
     enabled: !!doctorId && !!bookingForm.appointmentDate,
     retry: 1,
     staleTime: 0,
+    cacheTime: 0, // Don't cache slots - always fetch fresh
+    refetchOnWindowFocus: true, // Refresh when user comes back to tab
+    refetchOnMount: true, // Always refetch on component mount
   });
+
+  // Auto-refresh slots every 30 seconds when date is selected
+  useEffect(() => {
+    if (doctorId && bookingForm.appointmentDate) {
+      const interval = setInterval(() => {
+        refetchSlots();
+      }, 30000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [doctorId, bookingForm.appointmentDate, refetchSlots]);
 
   const bookingMutation = useMutation({
     mutationFn: async (bookingData: any) => {
@@ -348,16 +362,37 @@ export default function BookAppointment() {
                         type="date"
                         min={new Date().toISOString().split('T')[0]}
                         value={bookingForm.appointmentDate}
-                        onChange={(e) => setBookingForm(prev => ({ ...prev, appointmentDate: e.target.value }))}
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          setBookingForm(prev => ({ ...prev, appointmentDate: newDate, appointmentTime: '' }));
+                          // Force refresh slots when date changes
+                          if (newDate) {
+                            setTimeout(() => refetchSlots(), 100);
+                          }
+                        }}
                         data-testid="input-appointment-date"
                       />
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        Preferred Time *
-                      </label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Preferred Time *
+                        </label>
+                        {bookingForm.appointmentDate && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => refetchSlots()}
+                            disabled={slotsLoading}
+                            className="text-xs px-2 py-1 h-6"
+                          >
+                            {slotsLoading ? 'Refreshing...' : 'Refresh Times'}
+                          </Button>
+                        )}
+                      </div>
                       <Select 
                         value={bookingForm.appointmentTime} 
                         onValueChange={(value) => setBookingForm(prev => ({ ...prev, appointmentTime: value }))}

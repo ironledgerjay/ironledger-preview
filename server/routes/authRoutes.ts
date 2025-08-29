@@ -7,6 +7,8 @@ import { db } from '../storage';
 import { users, doctors, patients } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const router = Router();
 
@@ -40,6 +42,96 @@ const loginValidation = [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required'),
 ];
+
+// Social OAuth: Google
+router.get('/google', async (req, res) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.FRONTEND_URL || 'http://localhost:5000'}/api/auth/google/callback`;
+    if (!clientId || !clientSecret) return res.status(400).json({ error: 'Google OAuth not configured' });
+
+    const state = crypto.randomBytes(16).toString('hex');
+    (req.session as any).oauthState = state;
+
+    const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', redirectUri);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('scope', 'openid email profile');
+    url.searchParams.set('state', state);
+    url.searchParams.set('access_type', 'offline');
+    url.searchParams.set('include_granted_scopes', 'true');
+
+    res.redirect(url.toString());
+  } catch (e) {
+    console.error('Google OAuth init error:', e);
+    res.status(500).json({ error: 'Failed to start Google OAuth' });
+  }
+});
+
+router.get('/google/callback', async (req, res) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.FRONTEND_URL || 'http://localhost:5000'}/api/auth/google/callback`;
+    if (!clientId || !clientSecret) return res.status(400).send('Google OAuth not configured');
+
+    const code = req.query.code as string;
+    const state = req.query.state as string;
+    const expected = (req.session as any).oauthState;
+    if (!code || !state || state !== expected) return res.status(400).send('Invalid state');
+
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+    const tokenJson: any = await tokenRes.json();
+    if (!tokenJson.access_token) return res.status(400).send('Google token exchange failed');
+
+    const userinfoRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+      headers: { Authorization: `Bearer ${tokenJson.access_token}` },
+    });
+    const userinfo: any = await userinfoRes.json();
+
+    const email = userinfo.email;
+    const firstName = userinfo.given_name || 'User';
+    const lastName = userinfo.family_name || 'Google';
+
+    if (!email) return res.status(400).send('No email returned from Google');
+
+    const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    let user = existing;
+    if (!user) {
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const passwordHash = await bcrypt.hash(randomPassword, 12);
+      const inserted = await db.insert(users).values({ email, passwordHash, role: 'patient', isEmailVerified: true }).returning();
+      user = inserted[0];
+    }
+
+    const tokens = await AuthService.generateTokens(user.id, req.headers['user-agent'], req.ip);
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    const redirectTo = `${process.env.FRONTEND_URL || ''}/login-new?accessToken=${encodeURIComponent(tokens.accessToken)}&role=${encodeURIComponent(user.role)}` || '/login-new';
+    res.redirect(redirectTo);
+  } catch (e) {
+    console.error('Google OAuth callback error:', e);
+    res.status(500).send('Google OAuth failed');
+  }
+});
+
 
 // Register endpoint
 router.post('/register', authRateLimit, registerValidation, async (req, res) => {

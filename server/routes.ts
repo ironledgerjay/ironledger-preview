@@ -13,6 +13,37 @@ import crypto from 'crypto';
 export async function registerRoutes(app: Express): Promise<Server> {
   // Mount authentication routes
   app.use('/api/auth', authRoutes);
+
+  // Admin test email endpoints
+  app.get("/api/admin/test-email", async (req, res) => {
+    try {
+      const to = (req.query.to as string) || "ironledgerjay@gmail.com";
+      const ok = await emailService.sendVerificationEmail(to, "Admin", "test-token");
+      res.json({ success: ok, to });
+    } catch (err) {
+      console.error("Test email error:", err);
+      res.status(500).json({ success: false, error: "Failed to send test email" });
+    }
+  });
+
+  app.post("/api/admin/test-email", async (req, res) => {
+    try {
+      const to = (req.body?.to as string) || "ironledgerjay@gmail.com";
+      const type = (req.body?.type as string) || "verification";
+      let ok = false;
+      if (type === "doctor-welcome") {
+        ok = await emailService.sendDoctorWelcomeEmail(to, "Test", "Doctor");
+      } else if (type === "doctor-approval") {
+        ok = await emailService.sendDoctorApprovalEmail(to, "Test", "Doctor");
+      } else {
+        ok = await emailService.sendVerificationEmail(to, "Admin", "test-token");
+      }
+      res.json({ success: ok, to, type });
+    } catch (err) {
+      console.error("Test email error:", err);
+      res.status(500).json({ success: false, error: "Failed to send test email" });
+    }
+  });
   // Enhanced signup endpoint with email verification
   app.post("/api/users", async (req, res) => {
     try {

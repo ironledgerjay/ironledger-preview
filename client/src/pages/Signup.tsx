@@ -22,7 +22,7 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthNew } from '@/hooks/useAuthNew';
 import { useToast } from '@/hooks/use-toast';
 
 const provinces = [
@@ -74,7 +74,7 @@ export default function Signup() {
   });
   
   const [, setLocation] = useLocation();
-  const { signUp } = useAuth();
+  const { register } = useAuthNew();
   const { toast } = useToast();
 
   const handleChange = (field: keyof SignupFormData, value: string | boolean) => {
@@ -105,33 +105,21 @@ export default function Signup() {
     setIsLoading(true);
 
     try {
-      await signUp(formData.email, formData.password);
-      
-      // Create user profile in database
-      const profileData = {
-        ...formData,
-        userType,
-        isVerified: userType === 'patient', // Patients auto-verified, doctors need manual verification
-      };
-
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(profileData),
+      await register({
+        email: formData.email,
+        password: formData.password,
+        role: userType,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        province: formData.province,
+        city: formData.city,
+        ...(userType === 'doctor' && {
+          specialty: formData.specialty || undefined,
+          hpcsaNumber: formData.hpcsaNumber || undefined,
+          practiceAddress: formData.practiceAddress || undefined,
+        }),
       });
-
-      if (!response.ok) throw new Error('Failed to create profile');
-
-      toast({
-        title: userType === 'doctor' ? "Registration submitted!" : "Welcome aboard!",
-        description: userType === 'doctor' 
-          ? "Your doctor account is pending verification. You'll receive an email once approved."
-          : "Your account has been created successfully. Welcome to IronLedger MedMap!",
-      });
-      
-      setLocation(userType === 'doctor' ? '/verification-pending' : '/');
     } catch (error) {
       toast({
         title: "Registration failed",

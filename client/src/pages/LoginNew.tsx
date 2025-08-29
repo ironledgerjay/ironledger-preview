@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuthNew } from '@/hooks/useAuthNew';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,20 @@ export default function LoginNew() {
     password: '',
     twoFactorToken: '',
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get('accessToken');
+    const role = params.get('role');
+    if (accessToken) {
+      try { localStorage.setItem('accessToken', accessToken); } catch {}
+      if (role === 'doctor') {
+        setLocation('/doctor-portal');
+      } else {
+        setLocation('/');
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +120,11 @@ export default function LoginNew() {
               </TabsList>
               
               <TabsContent value="doctor">
+                <div className="grid grid-cols-1 gap-2 mb-4">
+                  <Button asChild variant="outline">
+                    <a href="/api/auth/google">Continue with Google</a>
+                  </Button>
+                </div>
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
@@ -206,6 +225,11 @@ export default function LoginNew() {
               </TabsContent>
               
               <TabsContent value="patient">
+                <div className="grid grid-cols-1 gap-2 mb-4">
+                  <Button asChild variant="outline">
+                    <a href="/api/auth/google">Continue with Google</a>
+                  </Button>
+                </div>
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">

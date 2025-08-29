@@ -80,6 +80,89 @@ export default function Admin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'payments' | 'stats' | 'enroll'>('pending');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [secretPhrase, setSecretPhrase] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const handleAdminAuth = async () => {
+    setIsAuthenticating(true);
+    try {
+      const response = await fetch('/api/admin/authenticate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secretPhrase }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setIsAuthenticated(true);
+        toast({
+          title: "Admin Access Granted",
+          description: "Welcome to the admin panel.",
+        });
+      } else {
+        toast({
+          title: "Access Denied",
+          description: "Invalid secret phrase. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Authentication Error",
+        description: "Failed to authenticate. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  // Show authentication screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Admin Access Required</CardTitle>
+            <CardDescription>
+              Enter the secret phrase to access the admin panel
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="secretPhrase" className="text-sm font-medium">
+                Secret Phrase
+              </label>
+              <Input
+                id="secretPhrase"
+                type="password"
+                value={secretPhrase}
+                onChange={(e) => setSecretPhrase(e.target.value)}
+                placeholder="Enter secret phrase"
+                onKeyPress={(e) => e.key === 'Enter' && handleAdminAuth()}
+                data-testid="input-secret-phrase"
+              />
+            </div>
+            <Button 
+              onClick={handleAdminAuth}
+              disabled={isAuthenticating || !secretPhrase}
+              className="w-full"
+              data-testid="button-admin-auth"
+            >
+              {isAuthenticating ? "Authenticating..." : "Access Admin Panel"}
+            </Button>
+            <div className="text-center">
+              <Button variant="ghost" onClick={() => window.history.back()}>
+                Back
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Fetch pending doctors with real-time polling
   const { data: pendingDoctors = [], isLoading: loadingPending } = useQuery<Doctor[]>({

@@ -1,10 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, X } from 'lucide-react';
+import { Check, X, Loader2 } from 'lucide-react';
 import { usePayFast } from '@/hooks/usePayFast';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useMutation } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
+import { apiRequest } from '@/lib/queryClient';
 
 interface MembershipPlansProps {
   onSelectPlan?: (plan: 'basic' | 'premium') => void;
@@ -12,35 +15,45 @@ interface MembershipPlansProps {
 
 export default function MembershipPlans({ onSelectPlan }: MembershipPlansProps) {
   const { user } = useAuth();
-  const { processMembershipPayment, loading } = usePayFast();
   const { toast } = useToast();
+  const [location, navigate] = useLocation();
 
-  const handlePremiumUpgrade = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to upgrade to Premium membership.",
-        variant: "destructive",
+  // Create payment mutation
+  const createPayment = useMutation({
+    mutationFn: async ({ membershipType }: { membershipType: string }) => {
+      if (!user?.id) throw new Error('User not logged in');
+      
+      const response = await apiRequest('POST', '/api/membership/payment', {
+        userId: user.id,
+        membershipType
       });
-      return;
-    }
-
-    try {
-      const result = await processMembershipPayment();
-      if (!result.success) {
-        toast({
-          title: "Payment Failed",
-          description: result.error || "Unable to process payment. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Redirect to PayFast payment URL
+      window.location.href = data.paymentUrl;
+    },
+    onError: (error: any) => {
       toast({
         title: "Payment Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "Failed to create payment. Please try again.",
         variant: "destructive",
       });
+    },
+  });
+
+  const handlePremiumUpgrade = (membershipType: string) => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to upgrade your membership.",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
     }
+    
+    createPayment.mutate({ membershipType });
   };
 
   const basicFeatures = [
@@ -140,23 +153,40 @@ export default function MembershipPlans({ onSelectPlan }: MembershipPlansProps) 
                 ))}
               </ul>
               
-              <Button 
-                className="w-full" 
-                onClick={handlePremiumUpgrade}
-                disabled={loading}
-                data-testid="button-select-premium-plan"
-              >
-                {loading ? (
-                  "Processing..."
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z"/>
-                    </svg>
-                    Pay with PayFast
-                  </>
-                )}
-              </Button>
+              <div className="space-y-3">
+                <Button 
+                  className="w-full"
+                  onClick={() => handlePremiumUpgrade('premium')}
+                  disabled={createPayment.isPending}
+                  data-testid="button-select-premium-quarterly"
+                >
+                  {createPayment.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Upgrade - R39 Quarterly'
+                  )}
+                </Button>
+                
+                <Button 
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => handlePremiumUpgrade('annual')}
+                  disabled={createPayment.isPending}
+                  data-testid="button-select-premium-annual"
+                >
+                  {createPayment.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Upgrade - R149 Annual (Save 24%)'
+                  )}
+                </Button>
+              </div>
               
               {/* PayFast Trust Badge */}
               <div className="flex items-center justify-center text-sm text-muted-foreground">

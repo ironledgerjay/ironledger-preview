@@ -1,76 +1,68 @@
-import { Link } from 'wouter';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLocation } from 'wouter';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { XCircle, ArrowLeft, CreditCard } from 'lucide-react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import BackButton from '@/components/BackButton';
 
 export default function PaymentCancelled() {
+  const [location, navigate] = useLocation();
+
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <section className="py-20 bg-gradient-to-br from-red-50 to-pink-50" data-testid="section-payment-cancelled">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-8">
-            <div className="flex justify-center">
-              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
-                <XCircle className="w-12 h-12 text-red-600" />
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-4">
+        <BackButton />
+        
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <XCircle className="h-8 w-8 text-red-600" />
             </div>
-            
-            <div className="space-y-4">
-              <h1 className="text-4xl font-bold text-foreground">Payment Cancelled</h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Your payment was cancelled. No charges have been made to your account.
+            <CardTitle className="text-2xl text-red-800">Payment Cancelled</CardTitle>
+            <CardDescription>
+              Your payment was cancelled. No charges have been made to your account.
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-semibold text-blue-800 mb-2">What happened?</h3>
+              <p className="text-sm text-blue-700">
+                The payment process was cancelled before completion. You can try again or contact support if you experienced any issues.
               </p>
             </div>
             
-            <Card className="max-w-2xl mx-auto shadow-lg" data-testid="card-payment-cancelled">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-center space-x-2">
-                  <CreditCard className="w-6 h-6 text-muted-foreground" />
-                  <span>Payment Status</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="text-center space-y-4">
-                  <p className="text-red-600 font-semibold">Transaction Cancelled</p>
-                  <p className="text-muted-foreground">
-                    You cancelled the payment process or there was an issue processing your payment.
-                  </p>
-                </div>
-                
-                <div className="border-t border-border pt-6">
-                  <h3 className="font-semibold text-foreground mb-4">What can you do now?</h3>
-                  <ul className="space-y-2 text-muted-foreground text-left">
-                    <li>• Try the payment process again</li>
-                    <li>• Check your payment method details</li>
-                    <li>• Contact support if you continue to experience issues</li>
-                    <li>• Use the free Basic plan to explore the platform</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link href="/">
-                <Button variant="outline" size="lg" data-testid="button-back-home">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Home
-                </Button>
-              </Link>
-              <Link href="/membership">
-                <Button size="lg" data-testid="button-try-again">
-                  Try Payment Again
-                </Button>
-              </Link>
+            <div className="space-y-3">
+              <Button 
+                onClick={() => navigate('/membership')}
+                className="w-full"
+                data-testid="button-try-again"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Try Payment Again
+              </Button>
+              
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/')}
+                className="w-full"
+                data-testid="button-home"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Go to Homepage
+              </Button>
+              
+              <Button 
+                variant="ghost"
+                onClick={() => navigate('/contact')}
+                className="w-full"
+                data-testid="button-contact"
+              >
+                Contact Support
+              </Button>
             </div>
-          </div>
-        </div>
-      </section>
-      
-      <Footer />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

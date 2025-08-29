@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MembershipPlans from '@/components/MembershipPlans';
@@ -9,24 +10,58 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { usePayFast } from '@/hooks/usePayFast';
 import { useToast } from '@/hooks/use-toast';
-import { Check, X, Star, Shield, CreditCard, Users } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+import { Check, X, Star, Shield, CreditCard, Users, Loader2 } from 'lucide-react';
 
 export default function Membership() {
   const { user } = useAuth();
   const { generatePaymentURL } = usePayFast();
   const { toast } = useToast();
+  const [location, navigate] = useLocation();
   
-  // Mock user membership data - in real app, this would come from the API
+  // Get user membership data from API
   const { data: membershipData } = useQuery({
     queryKey: ['/api/membership', user?.id],
     enabled: !!user,
-    // Mock data for now
-    queryFn: () => Promise.resolve({
-      type: 'basic',
-      freeBookingsRemaining: 0,
-      membershipExpiresAt: null,
-    }),
   });
+
+  // Create payment mutation
+  const createPayment = useMutation({
+    mutationFn: async ({ membershipType }: { membershipType: string }) => {
+      if (!user?.id) throw new Error('User not logged in');
+      
+      const response = await apiRequest('POST', '/api/membership/payment', {
+        userId: user.id,
+        membershipType
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Redirect to PayFast payment URL
+      window.location.href = data.paymentUrl;
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Payment Error",
+        description: error.message || "Failed to create payment. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUpgrade = (membershipType: string) => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to upgrade your membership.",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+    
+    createPayment.mutate({ membershipType });
+  };
 
   const benefits = [
     {

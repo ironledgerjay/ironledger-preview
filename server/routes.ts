@@ -1884,5 +1884,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
+  // Membership API endpoints
+  app.get("/api/membership/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const profile = await storage.getPatientProfile(userId);
+      
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      res.json({
+        type: profile.membershipType,
+        freeBookingsRemaining: profile.freeBookingsRemaining,
+        membershipExpiresAt: profile.membershipExpiresAt,
+        membershipStatus: profile.membershipExpiresAt && new Date() > profile.membershipExpiresAt ? 'expired' : 'active'
+      });
+    } catch (error) {
+      console.error("Error fetching membership:", error);
+      res.status(500).json({ error: "Failed to fetch membership data" });
+    }
+  });
+
+  // Create payment for membership upgrade
+  app.post("/api/membership/payment", async (req, res) => {
+    try {
+      const { userId, membershipType } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Membership pricing
+      const membershipPricing = {
+        premium: { amount: 39.00, name: "Premium Quarterly" },
+        annual: { amount: 149.00, name: "Premium Annual" }
+      };
+      
+      const pricing = membershipPricing[membershipType as keyof typeof membershipPricing];
+      if (!pricing) {
+        return res.status(400).json({ error: "Invalid membership type" });
+      }
+      
+      // Generate payment reference
+      const paymentRef = `MEM_${userId.slice(0, 8)}_${Date.now()}`;
+      
+      // PayFast payment data
+      const paymentData = {
+        merchant_id: process.env.VITE_PAYFAST_MERCHANT_ID!,
+        merchant_key: process.env.VITE_PAYFAST_MERCHANT_KEY!,
+        amount: pricing.amount.toFixed(2),
+        item_name: `IronLedger MedMap - ${pricing.name}`,
+        item_description: `${pricing.name} membership subscription`,
+        name_first: user.firstName || '',
+        name_last: user.lastName || '',
+        email_address: user.email,
+        m_payment_id: paymentRef,
+        return_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/membership/success`,
+        cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/membership/cancelled`,
+        notify_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/api/membership/webhook`,
+      };
+      
+      // Generate signature
+      const crypto = require('crypto');
+      const dataString = Object.entries(paymentData)
+        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+        .join('&');
+      
+      const signature = crypto
+        .createHash('md5')
+        .update(dataString + '&passphrase=' + process.env.VITE_PAYFAST_PASSPHRASE)
+        .digest('hex');
+      
+      // Store payment record
+      await storage.createPayment({
+        userId,
+        amount: pricing.amount.toString(),
+        currency: 'ZAR',
+        status: 'pending',
+        paymentReference: paymentRef,
+        type: 'membership',
+        metadata: JSON.stringify({
+          membershipType,
+          membershipName: pricing.name,
+          paymentMethod: 'payfast'
+        })
+      });
+      
+      const paymentUrl = `https://www.payfast.co.za/eng/process?${dataString}&signature=${signature}`;
+      
+      res.json({
+        paymentUrl,
+        paymentReference: paymentRef
+      });
+    } catch (error) {
+      console.error("Error creating membership payment:", error);
+      res.status(500).json({ error: "Failed to create payment" });
+    }
+  });
+
+  // PayFast webhook for membership payments
+  app.post("/api/membership/webhook", async (req, res) => {
+    try {
+      const { m_payment_id, payment_status } = req.body;
+      
+      if (payment_status === 'COMPLETE') {
+        // Find payment record
+        const payments = await storage.getPayments();
+        const payment = payments.find(p => p.paymentReference === m_payment_id);
+        
+        if (payment) {
+          // Update payment status
+          await storage.updatePaymentStatus(payment.id, 'completed');
+          
+          // Update user membership
+          const membershipData = JSON.parse(payment.metadata || '{}');
+          const expiryDate = new Date();
+          
+          if (membershipData.membershipType === 'annual') {
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+          } else {
+            expiryDate.setMonth(expiryDate.getMonth() + 3); // Quarterly
+          }
+          
+          await storage.updatePatientMembership(payment.userId, {
+            membershipType: 'premium',
+            freeBookingsRemaining: 5,
+            membershipExpiresAt: expiryDate
+          });
+        }
+      }
+      
+      res.status(200).send('OK');
+    } catch (error) {
+      console.error("Webhook error:", error);
+      res.status(500).send('Error');
+    }
+  });
+
+  // Admin authentication endpoint
+  app.post("/api/admin/authenticate", async (req, res) => {
+    try {
+      const { secretPhrase } = req.body;
+      const correctPhrase = "medmap2025admin!"; // Secret phrase
+      
+      if (secretPhrase === correctPhrase) {
+        // Create admin session token
+        const adminToken = require('crypto').randomBytes(32).toString('hex');
+        
+        req.session = req.session || {};
+        req.session.adminAuthenticated = true;
+        req.session.adminToken = adminToken;
+        
+        res.json({ 
+          success: true, 
+          message: "Admin access granted",
+          token: adminToken 
+        });
+      } else {
+        res.status(401).json({ 
+          success: false, 
+          message: "Invalid secret phrase" 
+        });
+      }
+    } catch (error) {
+      console.error("Admin auth error:", error);
+      res.status(500).json({ error: "Authentication failed" });
+    }
+  });
+
   return httpServer;
 }

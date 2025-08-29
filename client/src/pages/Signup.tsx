@@ -74,7 +74,7 @@ export default function Signup() {
   });
   
   const [, setLocation] = useLocation();
-  const { signUp } = useAuth();
+  const { register } = useAuthNew();
   const { toast } = useToast();
 
   const handleChange = (field: keyof SignupFormData, value: string | boolean) => {

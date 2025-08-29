@@ -409,8 +409,78 @@ export default function AdminSimple() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  Manual enrollment form will be implemented here
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">First Name</label>
+                      <Input placeholder="Dr. Sarah" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Last Name</label>
+                      <Input placeholder="Mthembu" />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Email Address</label>
+                      <Input placeholder="dr.sarah@example.com" type="email" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Phone Number</label>
+                      <Input placeholder="+27 11 123 4567" />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Medical Specialization</label>
+                      <Input placeholder="Cardiologist" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">HPCSA Registration Number</label>
+                      <Input placeholder="MP123456" />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Practice Location</label>
+                    <Input placeholder="Johannesburg, Gauteng" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Years of Experience</label>
+                    <Input placeholder="15" type="number" min="1" max="50" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Medical School</label>
+                    <Input placeholder="University of the Witwatersrand" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Additional Notes</label>
+                    <Input placeholder="Pre-verified credentials, direct enrollment approved by admin" />
+                  </div>
+                  
+                  <div className="flex gap-3 pt-4">
+                    <Button className="flex-1 bg-blue-600 hover:bg-blue-700">
+                      Enroll Doctor Immediately
+                    </Button>
+                    <Button variant="outline" className="flex-1">
+                      Save as Draft
+                    </Button>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h3 className="font-medium text-blue-900 mb-2">Enrollment Benefits</h3>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Immediate platform access without approval queue</li>
+                      <li>• Pre-verified professional status</li>
+                      <li>• Instant booking system activation</li>
+                      <li>• Direct integration with PayFast payment processing</li>
+                    </ul>
+                  </div>
                 </div>
               </CardContent>
             </Card>

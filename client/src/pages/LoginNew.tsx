@@ -106,6 +106,14 @@ export default function LoginNew() {
               </TabsList>
               
               <TabsContent value="doctor">
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <Button asChild variant="outline">
+                    <a href="/api/auth/google">Continue with Google</a>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <a href="/api/auth/facebook">Continue with Facebook</a>
+                  </Button>
+                </div>
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">

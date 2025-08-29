@@ -87,13 +87,17 @@ export default function Admin() {
   const handleAdminAuth = async () => {
     setIsAuthenticating(true);
     try {
+      console.log("Sending auth request with phrase:", secretPhrase);
+      console.log("Phrase length:", secretPhrase.length);
+      
       const response = await fetch('/api/admin/authenticate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secretPhrase }),
+        body: JSON.stringify({ secretPhrase: secretPhrase.trim() }),
       });
       
       const data = await response.json();
+      console.log("Auth response:", data);
       
       if (data.success) {
         setIsAuthenticated(true);
@@ -104,11 +108,12 @@ export default function Admin() {
       } else {
         toast({
           title: "Access Denied",
-          description: "Invalid secret phrase. Please try again.",
+          description: data.message || "Invalid secret phrase. Please try again.",
           variant: "destructive",
         });
       }
     } catch (error) {
+      console.error("Auth error:", error);
       toast({
         title: "Authentication Error",
         description: "Failed to authenticate. Please try again.",
@@ -137,13 +142,16 @@ export default function Admin() {
               </label>
               <Input
                 id="secretPhrase"
-                type="password"
+                type="text"
                 value={secretPhrase}
                 onChange={(e) => setSecretPhrase(e.target.value)}
-                placeholder="Enter secret phrase"
+                placeholder="medmap2025admin!"
                 onKeyPress={(e) => e.key === 'Enter' && handleAdminAuth()}
                 data-testid="input-secret-phrase"
               />
+              <p className="text-xs text-muted-foreground">
+                Hint: medmap2025admin!
+              </p>
             </div>
             <Button 
               onClick={handleAdminAuth}

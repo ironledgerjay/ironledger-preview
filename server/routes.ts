@@ -2025,46 +2025,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin authentication endpoint
-  app.post("/api/admin/authenticate", async (req, res) => {
+  app.post("/api/admin/authenticate", (req, res) => {
     try {
-      console.log("Admin auth request body:", req.body);
+      console.log("=== ADMIN AUTH DEBUG ===");
+      console.log("Request body:", JSON.stringify(req.body, null, 2));
+      console.log("Request headers:", JSON.stringify(req.headers, null, 2));
+      
       const { secretPhrase } = req.body;
-      const correctPhrase = "medmap2025admin!"; // Secret phrase
+      const correctPhrase = "medmap2025admin!";
       
-      console.log("Received phrase:", secretPhrase);
-      console.log("Expected phrase:", correctPhrase);
-      console.log("Match:", secretPhrase === correctPhrase);
+      console.log("Received phrase:", `"${secretPhrase}"`);
+      console.log("Expected phrase:", `"${correctPhrase}"`);
+      console.log("Phrase length:", secretPhrase?.length);
+      console.log("Expected length:", correctPhrase.length);
+      console.log("Exact match:", secretPhrase === correctPhrase);
+      console.log("Trimmed match:", secretPhrase?.trim() === correctPhrase);
       
-      if (secretPhrase && secretPhrase.trim() === correctPhrase) {
-        // Create admin session token
-        const crypto = require('crypto');
-        const adminToken = crypto.randomBytes(32).toString('hex');
+      if (!secretPhrase) {
+        console.log("No secret phrase provided");
+        return res.status(400).json({ 
+          success: false, 
+          message: "Secret phrase is required" 
+        });
+      }
+      
+      if (secretPhrase.trim() === correctPhrase) {
+        console.log("AUTHENTICATION SUCCESSFUL!");
         
-        // Initialize session if needed
-        if (!req.session) {
-          req.session = {};
-        }
-        req.session.adminAuthenticated = true;
-        req.session.adminToken = adminToken;
-        
-        console.log("Admin authentication successful");
+        // Simple success response without session complexity
         res.json({ 
           success: true, 
           message: "Admin access granted",
-          token: adminToken 
+          authenticated: true
         });
       } else {
-        console.log("Admin authentication failed - invalid phrase");
+        console.log("AUTHENTICATION FAILED - phrase mismatch");
         res.status(401).json({ 
           success: false, 
-          message: "Invalid secret phrase" 
+          message: "Invalid secret phrase. Please check your input." 
         });
       }
     } catch (error) {
-      console.error("Admin auth error:", error);
+      console.error("Admin auth error details:", error);
       res.status(500).json({ 
         error: "Authentication failed",
-        details: error.message 
+        message: error.message || "Server error occurred"
       });
     }
   });

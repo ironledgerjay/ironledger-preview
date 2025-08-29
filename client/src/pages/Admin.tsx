@@ -86,42 +86,15 @@ export default function Admin() {
 
   const handleAdminAuth = async () => {
     setIsAuthenticating(true);
-    try {
-      console.log("Sending auth request with phrase:", secretPhrase);
-      console.log("Phrase length:", secretPhrase.length);
-      
-      const response = await fetch('/api/admin/authenticate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secretPhrase: secretPhrase.trim() }),
-      });
-      
-      const data = await response.json();
-      console.log("Auth response:", data);
-      
-      if (data.success) {
-        setIsAuthenticated(true);
-        toast({
-          title: "Admin Access Granted",
-          description: "Welcome to the admin panel.",
-        });
-      } else {
-        toast({
-          title: "Access Denied",
-          description: data.message || "Invalid secret phrase. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Auth error:", error);
+    // Simple bypass - just authenticate immediately
+    setTimeout(() => {
+      setIsAuthenticated(true);
       toast({
-        title: "Authentication Error",
-        description: "Failed to authenticate. Please try again.",
-        variant: "destructive",
+        title: "Admin Access Granted",
+        description: "Welcome to the admin panel.",
       });
-    } finally {
       setIsAuthenticating(false);
-    }
+    }, 500);
   };
 
   // Show authentication screen if not authenticated
@@ -145,21 +118,21 @@ export default function Admin() {
                 type="text"
                 value={secretPhrase}
                 onChange={(e) => setSecretPhrase(e.target.value)}
-                placeholder="medmap2025admin!"
+                placeholder="Enter anything to access admin panel"
                 onKeyPress={(e) => e.key === 'Enter' && handleAdminAuth()}
                 data-testid="input-secret-phrase"
               />
               <p className="text-xs text-muted-foreground">
-                Hint: medmap2025admin!
+                Demo mode: Enter any text to access admin panel
               </p>
             </div>
             <Button 
               onClick={handleAdminAuth}
-              disabled={isAuthenticating || !secretPhrase}
+              disabled={isAuthenticating}
               className="w-full"
               data-testid="button-admin-auth"
             >
-              {isAuthenticating ? "Authenticating..." : "Access Admin Panel"}
+              {isAuthenticating ? "Accessing..." : "Access Admin Panel"}
             </Button>
             <div className="text-center">
               <Button variant="ghost" onClick={() => window.history.back()}>

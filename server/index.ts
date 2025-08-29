@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { env, corsConfig, isDevelopment } from "./config/environment";
@@ -32,6 +33,18 @@ app.use(cors(corsConfig));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser());
+
+// Session middleware for admin authentication
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'medmap-admin-secret-key-2025',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // Set to true in production with HTTPS
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 2 // 2 hours
+  }
+}));
 
 // Custom logging (keep existing implementation)
 app.use(requestLogger);

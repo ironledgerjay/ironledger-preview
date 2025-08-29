@@ -66,6 +66,22 @@ PayFast integration handles secure payment processing for membership upgrades an
 - **Real-time Notifications**: Admin alerts for registrations and approvals
 - **Enhanced Middleware**: Comprehensive authentication and authorization layers
 
+# Admin Panel Access
+
+## Admin Authentication
+- **Secret Phrase**: `medmap2025admin!`
+- **Access URL**: `/admin` 
+- **Session Duration**: 2 hours
+- **Features**: Real-time doctor approvals, user management, payment analytics, platform statistics, manual doctor enrollment
+
+## PayFast Membership Integration
+- **Premium Quarterly**: R39 (5 free bookings per quarter)
+- **Premium Annual**: R149 (Save 24% - 5 free bookings per quarter)  
+- **Basic Plan**: Free with R10 booking fees
+- **Payment Success**: `/membership/success` 
+- **Payment Cancelled**: `/membership/cancelled`
+- **Webhook**: `/api/membership/webhook` for automatic membership activation
+
 # Production Features
 
 ## Security & Middleware

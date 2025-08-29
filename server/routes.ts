@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import './types/session';
 import { WebSocketServer, WebSocket } from "ws";
 import { z } from "zod";
 import { storage } from "./storage";
@@ -2026,23 +2027,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin authentication endpoint
   app.post("/api/admin/authenticate", async (req, res) => {
     try {
+      console.log("Admin auth request body:", req.body);
       const { secretPhrase } = req.body;
       const correctPhrase = "medmap2025admin!"; // Secret phrase
       
-      if (secretPhrase === correctPhrase) {
+      console.log("Received phrase:", secretPhrase);
+      console.log("Expected phrase:", correctPhrase);
+      console.log("Match:", secretPhrase === correctPhrase);
+      
+      if (secretPhrase && secretPhrase.trim() === correctPhrase) {
         // Create admin session token
-        const adminToken = require('crypto').randomBytes(32).toString('hex');
+        const crypto = require('crypto');
+        const adminToken = crypto.randomBytes(32).toString('hex');
         
-        req.session = req.session || {};
+        // Initialize session if needed
+        if (!req.session) {
+          req.session = {};
+        }
         req.session.adminAuthenticated = true;
         req.session.adminToken = adminToken;
         
+        console.log("Admin authentication successful");
         res.json({ 
           success: true, 
           message: "Admin access granted",
           token: adminToken 
         });
       } else {
+        console.log("Admin authentication failed - invalid phrase");
         res.status(401).json({ 
           success: false, 
           message: "Invalid secret phrase" 
@@ -2050,7 +2062,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Admin auth error:", error);
-      res.status(500).json({ error: "Authentication failed" });
+      res.status(500).json({ 
+        error: "Authentication failed",
+        details: error.message 
+      });
     }
   });
 

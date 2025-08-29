@@ -4,6 +4,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { insertUserSchema, insertPatientSchema, insertDoctorSchema, insertBookingSchema, insertPaymentSchema } from "@shared/schema";
 import authRoutes from './routes/authRoutes';
+import { DoctorGenerator } from './services/doctorGenerator';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Mount authentication routes
@@ -180,29 +181,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all doctors with optional filtering
+  // Get all doctors with optional filtering - Enhanced with dynamic generation
   app.get("/api/doctors", async (req, res) => {
     try {
-      const { province, specialty, city } = req.query;
+      const { province, specialty, city, limit = '50' } = req.query;
       const filters = {
         province: province as string,
         specialty: specialty as string,
         city: city as string,
       };
       
-      const doctors = await storage.getDoctors(filters);
-      res.json(doctors);
+      // Get existing doctors from database
+      const existingDoctors = await storage.getDoctors(filters);
+      
+      // Generate additional doctors to fill the requested amount
+      const requestedLimit = Math.min(parseInt(limit as string), 200); // Cap at 200 for performance
+      const additionalNeeded = Math.max(0, requestedLimit - existingDoctors.length);
+      
+      if (additionalNeeded > 0) {
+        // Generate a larger pool of doctors to filter from
+        const poolSize = Math.max(additionalNeeded * 3, 150);
+        const generatedDoctors = DoctorGenerator.generateDoctorList(poolSize, 'browse');
+        
+        // Apply filters to generated doctors
+        let filteredGenerated = generatedDoctors;
+        if (filters.province && filters.province !== 'all') {
+          filteredGenerated = filteredGenerated.filter(d => d.province === filters.province);
+        }
+        if (filters.specialty && filters.specialty !== 'all') {
+          filteredGenerated = filteredGenerated.filter(d => d.specialty === filters.specialty);
+        }
+        if (filters.city && filters.city !== 'all') {
+          filteredGenerated = filteredGenerated.filter(d => d.city?.toLowerCase().includes(filters.city.toLowerCase()));
+        }
+        
+        // Shuffle and take what we need
+        const shuffled = filteredGenerated.sort(() => 0.5 - Math.random());
+        const selectedGenerated = shuffled.slice(0, additionalNeeded);
+        
+        // Combine and return
+        const allDoctors = [...existingDoctors, ...selectedGenerated];
+        res.json(allDoctors);
+      } else {
+        res.json(existingDoctors.slice(0, requestedLimit));
+      }
     } catch (error) {
       console.error('Doctors fetch error:', error);
       res.status(500).json({ message: 'Failed to fetch doctors' });
     }
   });
 
-  // Get doctor by ID
+  // Get doctor by ID - Enhanced with dynamic generation
   app.get("/api/doctors/:doctorId", async (req, res) => {
     try {
       const { doctorId } = req.params;
-      const doctor = await storage.getDoctor(doctorId);
+      
+      // First try to get from database
+      let doctor = await storage.getDoctor(doctorId);
+      
+      // If not found in database, check if it's a valid doctor ID pattern and generate
+      if (!doctor && DoctorGenerator.isValidDoctorId(doctorId)) {
+        console.log(`Generating doctor profile for: ${doctorId}`);
+        doctor = DoctorGenerator.generateDoctor(doctorId);
+      }
       
       if (!doctor) {
         return res.status(404).json({ message: "Doctor not found" });
@@ -1432,7 +1473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get available time slots for a specific doctor and date
+  // Get available time slots for a specific doctor and date - Enhanced with dynamic generation
   app.get("/api/doctors/:doctorId/available-slots", async (req, res) => {
     try {
       console.log('Available slots request:', req.params, req.query);
@@ -1447,7 +1488,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dayName = requestedDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
       console.log('Processing date:', date, 'dayName:', dayName);
       
-      // Get doctor's default schedule
+      // First try to get doctor from database
+      let doctor = await storage.getDoctor(doctorId);
+      
+      // If not found in database and valid doctor ID pattern, use dynamic generation
+      if (!doctor && DoctorGenerator.isValidDoctorId(doctorId)) {
+        console.log(`Generating available slots for dynamic doctor: ${doctorId}`);
+        const availableSlots = DoctorGenerator.generateAvailableSlots(doctorId, date as string);
+        return res.json({ availableSlots });
+      }
+      
+      // For database doctors or if no valid pattern, continue with existing logic
       const schedule = {
         monday: { start: "09:00", end: "17:00", available: true },
         tuesday: { start: "09:00", end: "17:00", available: true },
@@ -1473,15 +1524,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       while (currentTime < endTime) {
         const timeString = currentTime.toTimeString().slice(0, 5);
         
-        // Check if slot is already booked
-        const existingBookings = await storage.getBookingsByDoctor(doctorId);
-        const isBooked = existingBookings.some(booking => {
-          const bookingDate = new Date(booking.appointmentDate);
-          return bookingDate.toDateString() === requestedDate.toDateString() &&
-                 bookingDate.getHours() === currentTime.getHours() &&
-                 bookingDate.getMinutes() === currentTime.getMinutes() &&
-                 booking.status !== 'cancelled';
-        });
+        // Check if slot is already booked (only for database doctors)
+        let isBooked = false;
+        if (doctor) {
+          const existingBookings = await storage.getBookingsByDoctor(doctorId);
+          isBooked = existingBookings.some(booking => {
+            const bookingDate = new Date(booking.appointmentDate);
+            return bookingDate.toDateString() === requestedDate.toDateString() &&
+                   bookingDate.getHours() === currentTime.getHours() &&
+                   bookingDate.getMinutes() === currentTime.getMinutes() &&
+                   booking.status !== 'cancelled';
+          });
+        }
         
         if (!isBooked) {
           slots.push({

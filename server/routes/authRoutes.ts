@@ -114,69 +114,6 @@ router.get('/google/callback', async (req, res) => {
   }
 });
 
-// Social OAuth: Facebook
-router.get('/facebook', (req, res) => {
-  const clientId = process.env.FACEBOOK_CLIENT_ID;
-  const redirectUri = process.env.FACEBOOK_REDIRECT_URI || `${process.env.FRONTEND_URL || 'http://localhost:5000'}/api/auth/facebook/callback`;
-  if (!clientId) return res.status(400).json({ error: 'Facebook OAuth not configured' });
-  const state = crypto.randomBytes(16).toString('hex');
-  (req.session as any).oauthState = state;
-  const url = new URL('https://www.facebook.com/v18.0/dialog/oauth');
-  url.searchParams.set('client_id', clientId);
-  url.searchParams.set('redirect_uri', redirectUri);
-  url.searchParams.set('state', state);
-  url.searchParams.set('scope', 'email,public_profile');
-  res.redirect(url.toString());
-});
-
-router.get('/facebook/callback', async (req, res) => {
-  try {
-    const code = req.query.code as string;
-    const state = req.query.state as string;
-    const expected = (req.session as any).oauthState;
-    if (!code || !state || state !== expected) return res.status(400).send('Invalid state');
-
-    const clientId = process.env.FACEBOOK_CLIENT_ID!;
-    const clientSecret = process.env.FACEBOOK_CLIENT_SECRET!;
-    const redirectUri = process.env.FACEBOOK_REDIRECT_URI || `${process.env.FRONTEND_URL || 'http://localhost:5000'}/api/auth/facebook/callback`;
-
-    const tokenRes = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${encodeURIComponent(clientSecret)}&code=${encodeURIComponent(code)}`);
-    const tokenJson: any = await tokenRes.json();
-    if (!tokenJson.access_token) return res.status(400).send('Facebook token exchange failed');
-
-    const meRes = await fetch('https://graph.facebook.com/me?fields=id,name,email', {
-      headers: { Authorization: `Bearer ${tokenJson.access_token}` },
-    });
-    const me: any = await meRes.json();
-    const email = me.email;
-    const name = (me.name || 'Facebook User').split(' ');
-    const firstName = name[0] || 'User';
-    const lastName = name.slice(1).join(' ') || 'Facebook';
-    if (!email) return res.status(400).send('No email returned from Facebook');
-
-    const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    let user = existing;
-    if (!user) {
-      const passwordHash = await bcrypt.hash(generators.random(16), 12);
-      const inserted = await db.insert(users).values({ email, passwordHash, role: 'patient', isEmailVerified: true }).returning();
-      user = inserted[0];
-    }
-
-    const tokens = await AuthService.generateTokens(user.id, req.headers['user-agent'], req.ip);
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-
-    const redirectTo = `${process.env.FRONTEND_URL || ''}/login-new?accessToken=${encodeURIComponent(tokens.accessToken)}&role=${encodeURIComponent(user.role)}` || '/login-new';
-    res.redirect(redirectTo);
-  } catch (e) {
-    console.error('Facebook OAuth callback error:', e);
-    res.status(500).send('Facebook OAuth failed');
-  }
-});
 
 // Register endpoint
 router.post('/register', authRateLimit, registerValidation, async (req, res) => {

@@ -76,15 +76,18 @@ interface Payment {
 }
 
 export default function Admin() {
+  // Always call hooks at the top level
   useActivityLogger('admin');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // All state hooks
   const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'payments' | 'stats' | 'enroll'>('pending');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [secretPhrase, setSecretPhrase] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const handleAdminAuth = async () => {
+  const handleAdminAuth = () => {
     setIsAuthenticating(true);
     // Simple bypass - just authenticate immediately
     setTimeout(() => {
@@ -96,6 +99,31 @@ export default function Admin() {
       setIsAuthenticating(false);
     }, 500);
   };
+
+  // All queries at the top level with consistent enabled state
+  const { data: pendingDoctors = [], isLoading: loadingPending } = useQuery<Doctor[]>({
+    queryKey: ['/api/crm/doctors/pending'],
+    enabled: isAuthenticated && activeTab === 'pending',
+    refetchInterval: 3000, // Poll every 3 seconds
+  });
+
+  const { data: users = [], isLoading: loadingUsers } = useQuery<User[]>({
+    queryKey: ['/api/crm/users'],
+    enabled: isAuthenticated && activeTab === 'users',
+    refetchInterval: 5000, // Poll every 5 seconds
+  });
+
+  const { data: payments = [], isLoading: loadingPayments } = useQuery<Payment[]>({
+    queryKey: ['/api/crm/payments'],
+    enabled: isAuthenticated && activeTab === 'payments',
+    refetchInterval: 15000, // Poll every 15 seconds
+  });
+
+  const { data: stats, isLoading: loadingStats } = useQuery<Stats>({
+    queryKey: ['/api/crm/stats'],
+    enabled: isAuthenticated && activeTab === 'stats',
+    refetchInterval: 10000, // Poll every 10 seconds
+  });
 
   // Show authentication screen if not authenticated
   if (!isAuthenticated) {
@@ -145,43 +173,10 @@ export default function Admin() {
     );
   }
 
-  // Fetch pending doctors with real-time polling
-  const { data: pendingDoctors = [], isLoading: loadingPending } = useQuery<Doctor[]>({
-    queryKey: ['/api/crm/doctors/pending'],
-    enabled: activeTab === 'pending',
-    refetchInterval: 3000, // Poll every 3 seconds for real-time updates
-  });
 
-  // Fetch notifications with real-time polling
-  const { data: notifications = [], isLoading: loadingNotifications } = useQuery<Notification[]>({
-    queryKey: ['/api/crm/notifications'],
-    enabled: activeTab === 'notifications',
-    refetchInterval: 5000, // Poll every 5 seconds for new notifications
-  });
-
-  // Fetch stats with periodic updates
-  const { data: stats, isLoading: loadingStats } = useQuery<Stats>({
-    queryKey: ['/api/crm/stats'],
-    enabled: activeTab === 'stats',
-    refetchInterval: 10000, // Poll every 10 seconds for updated stats
-  });
-
-  // Fetch all users with real-time polling
-  const { data: users = [], isLoading: loadingUsers } = useQuery<User[]>({
-    queryKey: ['/api/crm/users'],
-    enabled: activeTab === 'users',
-    refetchInterval: 5000, // Poll every 5 seconds for user updates
-  });
-
-  // Fetch payment analytics
-  const { data: payments = [], isLoading: loadingPayments } = useQuery<Payment[]>({
-    queryKey: ['/api/crm/payments'],
-    enabled: activeTab === 'payments',
-    refetchInterval: 15000, // Poll every 15 seconds for payment updates
-  });
 
   // Doctor approval mutation
-  const approveDoctor = useMutation({
+  const approveDoctorMutation = useMutation({
     mutationFn: async ({ doctorId, isVerified, notes }: { doctorId: string; isVerified: boolean; notes?: string }) => {
       const response = await fetch(`/api/crm/doctors/${doctorId}/verify`, {
         method: 'PATCH',

@@ -162,14 +162,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Register mutation
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterData) => {
-      const response = await apiRequest('POST', '/api/auth/register', userData);
+      const response = await apiRequest('POST', '/api/users', {
+        userType: userData.role,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        phone: userData.phone,
+        province: userData.province,
+        city: userData.city,
+        password: userData.password,
+        ...(userData.role === 'doctor' && {
+          specialty: userData.specialty,
+          hpcsaNumber: userData.hpcsaNumber,
+          practiceAddress: userData.practiceAddress,
+          qualifications: userData.qualifications,
+          experience: userData.experience,
+          consultationFee: userData.consultationFee,
+        }),
+      });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Registration Successful",
-        description: "Please check your email to verify your account.",
+        description: data.message || "Please check your email to verify your account.",
       });
+      
+      // Redirect to verification pending page
+      if (data.requiresEmailVerification) {
+        window.location.href = '/verification-pending';
+      }
     },
     onError: (error: any) => {
       toast({

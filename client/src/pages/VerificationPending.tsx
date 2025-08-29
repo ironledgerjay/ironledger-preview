@@ -1,191 +1,152 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, Clock, Mail, Shield, ArrowLeft } from 'lucide-react';
-import { Link } from 'wouter';
-import { usePageTracking } from '@/hooks/useActivityLogger';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { Mail, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import BackButton from '@/components/BackButton';
 
 export default function VerificationPending() {
-  usePageTracking('Verification Pending');
+  const [location, navigate] = useLocation();
+  const { toast } = useToast();
+  
+  const [email, setEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
+  const [error, setError] = useState('');
 
-  const verificationSteps = [
-    {
-      step: 1,
-      title: "Application Submitted",
-      description: "Your doctor registration has been received",
-      status: "completed",
-      icon: CheckCircle,
-    },
-    {
-      step: 2,
-      title: "Document Review",
-      description: "Our team is reviewing your HPCSA credentials",
-      status: "in_progress",
-      icon: Shield,
-    },
-    {
-      step: 3,
-      title: "Profile Verification",
-      description: "Final verification and profile activation",
-      status: "pending",
-      icon: Clock,
-    },
-    {
-      step: 4,
-      title: "Account Activated",
-      description: "You'll receive an email confirmation when approved",
-      status: "pending",
-      icon: Mail,
-    },
-  ];
+  const resendVerificationEmail = async () => {
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+    
+    setIsResending(true);
+    setError('');
+    
+    try {
+      await apiRequest('POST', '/api/auth/resend-verification', {
+        email: email
+      });
+      
+      toast({
+        title: "Email Sent!",
+        description: "Verification email has been sent. Please check your inbox.",
+      });
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to resend verification email');
+      toast({
+        title: "Failed to Send",
+        description: "There was an error sending the verification email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  // Manual verification option
+  const handleManualVerification = () => {
+    navigate('/verify-email');
+  };
 
   return (
-    <div className="min-h-screen bg-background py-12" data-testid="page-verification-pending">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Back to Home */}
-        <div className="mb-6">
-          <Link href="/">
-            <Button variant="outline" className="flex items-center gap-2" data-testid="button-back-home">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </Button>
-          </Link>
-        </div>
-
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="mx-auto mb-4 w-16 h-16 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center">
-            <Clock className="h-8 w-8 text-amber-600" />
-          </div>
-          <h1 className="text-4xl font-bold text-foreground mb-4">
-            Verification in Progress
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Thank you for registering as a healthcare professional. Your account is currently under review for verification.
-          </p>
-        </div>
-
-        {/* Status Alert */}
-        <Alert className="mb-8 border-amber-200 bg-amber-50 dark:bg-amber-900/20">
-          <Clock className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-800 dark:text-amber-200">
-            <strong>Verification typically takes 1-3 business days.</strong> You'll receive an email notification once your account is approved and ready for use.
-          </AlertDescription>
-        </Alert>
-
-        {/* Verification Steps */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Verification Process
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {verificationSteps.map((step) => {
-                const StatusIcon = step.icon;
-                return (
-                  <div key={step.step} className="flex items-start gap-4 p-4 rounded-lg border">
-                    <div className={`rounded-full p-2 ${
-                      step.status === 'completed' 
-                        ? 'bg-green-100 dark:bg-green-900/20' 
-                        : step.status === 'in_progress'
-                        ? 'bg-amber-100 dark:bg-amber-900/20'
-                        : 'bg-gray-100 dark:bg-gray-800'
-                    }`}>
-                      <StatusIcon className={`h-5 w-5 ${
-                        step.status === 'completed' 
-                          ? 'text-green-600' 
-                          : step.status === 'in_progress'
-                          ? 'text-amber-600'
-                          : 'text-gray-400'
-                      }`} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium">Step {step.step}: {step.title}</span>
-                        <Badge variant={
-                          step.status === 'completed' 
-                            ? 'default' 
-                            : step.status === 'in_progress'
-                            ? 'secondary'
-                            : 'outline'
-                        }>
-                          {step.status === 'completed' ? 'Complete' : 
-                           step.status === 'in_progress' ? 'In Progress' : 'Pending'}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{step.description}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* What's Next */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>What happens next?</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-3">
-              <Mail className="h-5 w-5 text-blue-500 mt-1" />
-              <div>
-                <h3 className="font-medium">Email Notification</h3>
-                <p className="text-sm text-muted-foreground">
-                  You'll receive an email at your registered address once verification is complete.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Shield className="h-5 w-5 text-green-500 mt-1" />
-              <div>
-                <h3 className="font-medium">Account Activation</h3>
-                <p className="text-sm text-muted-foreground">
-                  Upon approval, you can log in and start accepting patient appointments.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-purple-500 mt-1" />
-              <div>
-                <h3 className="font-medium">Profile Setup</h3>
-                <p className="text-sm text-muted-foreground">
-                  Complete your profile with consultation fees, availability, and additional details.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Contact Support */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-4">
+        <BackButton />
+        
         <Card>
-          <CardHeader>
-            <CardTitle>Need Help?</CardTitle>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+              <Mail className="h-8 w-8 text-blue-600" />
+            </div>
+            <CardTitle className="text-2xl">Check Your Email</CardTitle>
+            <CardDescription>
+              We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">
-              If you have questions about the verification process or need to update your information, 
-              please don't hesitate to contact our support team.
-            </p>
-            <div className="flex gap-4">
-              <Link href="/contact">
-                <Button variant="outline" data-testid="button-contact-support">
-                  Contact Support
-                </Button>
-              </Link>
-              <Button variant="outline" asChild>
-                <a href="mailto:support@ironledgermedmap.co.za" data-testid="button-email-support">
-                  Email Us
-                </a>
+          
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-medium text-green-800">Account Created Successfully!</span>
+              </div>
+              <p className="text-sm text-green-700 mt-2">
+                Your account has been created. To complete the setup, please verify your email address.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900">Didn't receive the email?</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email">Enter your email to resend verification</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  data-testid="input-email"
+                />
+              </div>
+              
+              <Button 
+                onClick={resendVerificationEmail}
+                disabled={isResending || !email}
+                className="w-full"
+                data-testid="button-resend-verification"
+              >
+                {isResending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Resend Verification Email'
+                )}
               </Button>
+              
+              <div className="text-center">
+                <Button 
+                  variant="outline" 
+                  onClick={handleManualVerification}
+                  className="w-full"
+                  data-testid="button-manual-verification"
+                >
+                  I Have a Verification Link
+                </Button>
+              </div>
+            </div>
+            
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-600">
+                Check your spam folder if you don't see the email in your inbox.
+              </p>
+              <p className="text-xs text-gray-500">
+                Verification links expire after 24 hours for security.
+              </p>
             </div>
           </CardContent>
         </Card>
+        
+        <div className="text-center">
+          <Button variant="ghost" onClick={() => navigate('/')}>
+            Back to Home
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -128,8 +128,7 @@ export default function SignupNew() {
         }),
       });
       
-      // Redirect to email verification page
-      setLocation('/verify-email');
+      // Success handled by register mutation onSuccess callback
     } catch (error) {
       // Error handled by the hook
     } finally {

@@ -7,27 +7,28 @@ interface BackButtonProps {
   className?: string;
 }
 
-export default function BackButton({ fallbackPath = '/', className }: BackButtonProps) {
-  const [, setLocation] = useLocation();
+export default function BackButton({ fallbackPath = '/', className = '' }: BackButtonProps) {
+  const [location, navigate] = useLocation();
 
   const handleBack = () => {
     // Try to go back in browser history
     if (window.history.length > 1) {
       window.history.back();
     } else {
-      // Fallback to specified path
-      setLocation(fallbackPath);
+      // Fallback to specified path or home
+      navigate(fallbackPath);
     }
   };
 
   return (
     <Button
       variant="ghost"
+      size="sm"
       onClick={handleBack}
-      className={`text-gray-600 hover:text-gray-800 p-0 h-auto ${className}`}
-      data-testid="back-button"
+      className={`flex items-center gap-2 text-gray-600 hover:text-gray-900 ${className}`}
+      data-testid="button-back"
     >
-      <ArrowLeft className="h-4 w-4 mr-2" />
+      <ArrowLeft className="h-4 w-4" />
       Back
     </Button>
   );

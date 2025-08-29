@@ -27,7 +27,10 @@ export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByVerificationToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserVerificationToken(userId: string, token: string, expires: Date): Promise<void>;
+  verifyUserEmail(userId: string): Promise<void>;
 
   // Patients
   getPatient(id: string): Promise<Patient | undefined>;
@@ -203,6 +206,29 @@ export class MemStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(user => user.email === email);
+  }
+
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.emailVerificationToken === token);
+  }
+
+  async updateUserVerificationToken(userId: string, token: string, expires: Date): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      user.emailVerificationToken = token;
+      user.emailVerificationExpires = expires;
+      this.users.set(userId, user);
+    }
+  }
+
+  async verifyUserEmail(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      user.isEmailVerified = true;
+      user.emailVerificationToken = null;
+      user.emailVerificationExpires = null;
+      this.users.set(userId, user);
+    }
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

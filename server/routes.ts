@@ -6,22 +6,38 @@ import { storage } from "./storage";
 import { insertUserSchema, insertPatientSchema, insertDoctorSchema, insertBookingSchema, insertPaymentSchema } from "@shared/schema";
 import authRoutes from './routes/authRoutes';
 import { DoctorGenerator } from './services/doctorGenerator';
+import { emailService } from './services/emailService';
+import crypto from 'crypto';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Mount authentication routes
   app.use('/api/auth', authRoutes);
-  // Create user profile (Signup endpoint)
+  // Enhanced signup endpoint with email verification
   app.post("/api/users", async (req, res) => {
     try {
-      const { userType, firstName, lastName, email, phone, province, city, ...extraData } = req.body;
+      const { userType, firstName, lastName, email, phone, province, city, password, ...extraData } = req.body;
       
-      // Create base user
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+      
+      // Generate email verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      // Create base user with email verification
       const userData = {
         firstName,
         lastName,
         email,
         phone: phone || null,
         role: userType === 'doctor' ? 'doctor' : 'patient',
+        passwordHash: password || 'temp_password_hash', // Will be implemented properly with bcrypt
+        isEmailVerified: false,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpires: verificationExpires,
       };
       
       const user = await storage.createUser(userData);
@@ -46,6 +62,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         profile = await storage.createDoctor(doctorData);
+        
+        // Send welcome email for doctor
+        await emailService.sendDoctorWelcomeEmail(email, firstName, lastName);
         
         // Log to CRM system
         await storage.logActivity({
@@ -91,6 +110,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         profile = await storage.createPatient(patientData);
         
+        // Send welcome email for patient with verification
+        await emailService.sendWelcomeEmail(email, firstName, verificationToken);
+        
         // Log to CRM system
         await storage.logActivity({
           userId: user.id,
@@ -104,10 +126,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      res.status(201).json({ user, profile });
+      res.status(201).json({ 
+        message: "Account created successfully! Please check your email to verify your account.", 
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          role: user.role,
+          isEmailVerified: false
+        }, 
+        profile,
+        requiresEmailVerification: true
+      });
     } catch (error) {
       console.error('User creation error:', error);
       res.status(400).json({ message: error instanceof Error ? error.message : 'Failed to create user' });
+    }
+  });
+
+  // Email verification endpoint
+  app.post("/api/auth/verify-email", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ error: "Verification token is required" });
+      }
+      
+      // Find user with this verification token
+      const user = await storage.getUserByVerificationToken(token);
+      
+      if (!user) {
+        return res.status(400).json({ error: "Invalid or expired verification token" });
+      }
+      
+      // Check if token is expired
+      if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
+        return res.status(400).json({ error: "Verification token has expired" });
+      }
+      
+      // Update user as verified
+      await storage.verifyUserEmail(user.id);
+      
+      // Log verification activity
+      await storage.logActivity({
+        userId: user.id,
+        userType: user.role,
+        action: 'email_verified',
+        page: 'email_verification',
+        details: {
+          verifiedAt: new Date().toISOString(),
+        },
+        source: 'email_verification',
+      });
+      
+      res.json({ 
+        message: "Email verified successfully! You can now access all features.",
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          isEmailVerified: true
+        }
+      });
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      res.status(500).json({ error: "Failed to verify email" });
+    }
+  });
+
+  // Resend verification email endpoint
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (user.isEmailVerified) {
+        return res.status(400).json({ error: "Email is already verified" });
+      }
+      
+      // Generate new verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      // Update user with new token
+      await storage.updateUserVerificationToken(user.id, verificationToken, verificationExpires);
+      
+      // Get user's first name for email
+      let firstName = 'User';
+      if (user.role === 'patient') {
+        const patient = await storage.getPatientByUserId(user.id);
+        firstName = patient?.firstName || 'User';
+      } else if (user.role === 'doctor') {
+        const doctor = await storage.getDoctorByUserId(user.id);
+        firstName = doctor?.firstName || 'Doctor';
+      }
+      
+      // Send verification email
+      await emailService.sendVerificationEmail(email, firstName, verificationToken);
+      
+      res.json({ message: "Verification email sent successfully" });
+    } catch (error) {
+      console.error("Error resending verification email:", error);
+      res.status(500).json({ error: "Failed to resend verification email" });
     }
   });
 

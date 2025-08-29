@@ -1,204 +1,441 @@
-import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 
-const SMTP_HOST = process.env.SMTP_HOST || 'localhost';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
-const SMTP_USER = process.env.SMTP_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@medmap.co.za';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5000';
+if (!process.env.SENDGRID_API_KEY) {
+  throw new Error("SENDGRID_API_KEY environment variable must be set");
+}
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+interface EmailTemplate {
+  to: string;
+  from: string;
+  subject: string;
+  html: string;
+  text?: string;
+}
 
 export class EmailService {
-  private static transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
-    auth: SMTP_USER ? {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    } : undefined,
-  });
+  private readonly fromEmail = 'noreply@ironledgermedmap.com';
 
-  static async sendEmail(to: string, subject: string, html: string): Promise<void> {
+  async sendWelcomeEmail(userEmail: string, firstName: string, verificationToken: string): Promise<boolean> {
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
+    
+    const emailTemplate: EmailTemplate = {
+      to: userEmail,
+      from: this.fromEmail,
+      subject: 'Welcome to IronLedger MedMap - Verify Your Account',
+      html: this.getWelcomeEmailTemplate(firstName, verificationUrl),
+      text: this.getWelcomeEmailText(firstName, verificationUrl)
+    };
+
     try {
-      await this.transporter.sendMail({
-        from: FROM_EMAIL,
-        to,
-        subject,
-        html,
-      });
-      console.log(`Email sent to ${to}: ${subject}`);
+      await sgMail.send(emailTemplate);
+      console.log(`Welcome email sent successfully to ${userEmail}`);
+      return true;
     } catch (error) {
-      console.error('Failed to send email:', error);
-      throw new Error('Email sending failed');
+      console.error('Error sending welcome email:', error);
+      return false;
     }
   }
 
-  static async sendEmailVerification(email: string, token: string): Promise<void> {
-    const verificationUrl = `${FRONTEND_URL}/verify-email?token=${token}`;
+  async sendDoctorWelcomeEmail(userEmail: string, firstName: string, lastName: string): Promise<boolean> {
+    const emailTemplate: EmailTemplate = {
+      to: userEmail,
+      from: this.fromEmail,
+      subject: 'Welcome to IronLedger MedMap - Doctor Registration Received',
+      html: this.getDoctorWelcomeTemplate(firstName, lastName),
+      text: this.getDoctorWelcomeText(firstName, lastName)
+    };
+
+    try {
+      await sgMail.send(emailTemplate);
+      console.log(`Doctor welcome email sent successfully to ${userEmail}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending doctor welcome email:', error);
+      return false;
+    }
+  }
+
+  async sendVerificationEmail(userEmail: string, firstName: string, verificationToken: string): Promise<boolean> {
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
     
-    const html = `
-      <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-        <h2 style="color: #0d9488;">Welcome to IronLedger MedMap!</h2>
-        
-        <p>Thank you for registering with IronLedger MedMap. To complete your registration, please verify your email address by clicking the button below:</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${verificationUrl}" 
-             style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Verify Email Address
-          </a>
-        </div>
-        
-        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
-        
-        <p style="margin-top: 30px; font-size: 14px; color: #666;">
-          This verification link will expire in 24 hours. If you didn't create an account with IronLedger MedMap, please ignore this email.
-        </p>
-        
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-        
-        <p style="font-size: 12px; color: #9ca3af;">
-          IronLedger MedMap - Connecting South African patients with verified medical professionals
-        </p>
-      </div>
-    `;
+    const emailTemplate: EmailTemplate = {
+      to: userEmail,
+      from: this.fromEmail,
+      subject: 'Verify Your IronLedger MedMap Account',
+      html: this.getVerificationEmailTemplate(firstName, verificationUrl),
+      text: this.getVerificationEmailText(firstName, verificationUrl)
+    };
 
-    await this.sendEmail(email, 'Verify Your Email Address - IronLedger MedMap', html);
+    try {
+      await sgMail.send(emailTemplate);
+      console.log(`Verification email sent successfully to ${userEmail}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+      return false;
+    }
   }
 
-  static async sendPasswordReset(email: string, token: string): Promise<void> {
-    const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}`;
+  async sendDoctorApprovalEmail(userEmail: string, firstName: string, lastName: string): Promise<boolean> {
+    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5000'}/doctor-portal`;
     
-    const html = `
-      <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-        <h2 style="color: #dc2626;">Password Reset Request</h2>
-        
-        <p>We received a request to reset your password for your IronLedger MedMap account. Click the button below to create a new password:</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" 
-             style="background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Reset Password
-          </a>
-        </div>
-        
-        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #666;">${resetUrl}</p>
-        
-        <p style="margin-top: 30px; font-size: 14px; color: #666;">
-          This password reset link will expire in 1 hour. If you didn't request a password reset, please ignore this email.
-        </p>
-        
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-        
-        <p style="font-size: 12px; color: #9ca3af;">
-          IronLedger MedMap - Connecting South African patients with verified medical professionals
-        </p>
-      </div>
-    `;
+    const emailTemplate: EmailTemplate = {
+      to: userEmail,
+      from: this.fromEmail,
+      subject: 'Your IronLedger MedMap Doctor Account is Approved!',
+      html: this.getDoctorApprovalTemplate(firstName, lastName, loginUrl),
+      text: this.getDoctorApprovalText(firstName, lastName, loginUrl)
+    };
 
-    await this.sendEmail(email, 'Password Reset Request - IronLedger MedMap', html);
+    try {
+      await sgMail.send(emailTemplate);
+      console.log(`Doctor approval email sent successfully to ${userEmail}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending doctor approval email:', error);
+      return false;
+    }
   }
 
-  static async sendDoctorApproval(email: string, doctorName: string): Promise<void> {
-    const loginUrl = `${FRONTEND_URL}/login`;
-    
-    const html = `
-      <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-        <h2 style="color: #059669;">Doctor Application Approved!</h2>
-        
-        <p>Dear Dr. ${doctorName},</p>
-        
-        <p>Congratulations! Your doctor application has been approved by our admin team. You can now access your doctor portal and start managing your practice on IronLedger MedMap.</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${loginUrl}" 
-             style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Access Doctor Portal
-          </a>
+  private getWelcomeEmailTemplate(firstName: string, verificationUrl: string): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to IronLedger MedMap</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%); color: white; padding: 40px 30px; text-align: center; }
+        .logo { font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+        .tagline { font-size: 16px; opacity: 0.9; }
+        .content { padding: 40px 30px; }
+        .welcome-title { font-size: 24px; color: #1e293b; margin-bottom: 20px; }
+        .welcome-text { font-size: 16px; color: #475569; margin-bottom: 30px; line-height: 1.8; }
+        .btn { display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+        .features { background-color: #f1f5f9; padding: 30px; margin: 30px 0; border-radius: 12px; }
+        .feature { margin-bottom: 15px; display: flex; align-items: center; }
+        .feature-icon { width: 20px; height: 20px; background-color: #0ea5e9; border-radius: 50%; margin-right: 15px; }
+        .footer { background-color: #1e293b; color: #94a3b8; padding: 30px; text-align: center; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏥 IronLedger MedMap</div>
+            <div class="tagline">Connecting You with Trusted Healthcare Professionals</div>
         </div>
         
-        <p><strong>Next Steps:</strong></p>
-        <ul>
-          <li>Configure your weekly schedule</li>
-          <li>Set up your consultation preferences</li>
-          <li>Review and manage patient bookings</li>
-          <li>Complete your professional profile</li>
-        </ul>
-        
-        <p style="margin-top: 30px; font-size: 14px; color: #666;">
-          Welcome to the IronLedger MedMap community of verified medical professionals.
-        </p>
-        
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-        
-        <p style="font-size: 12px; color: #9ca3af;">
-          IronLedger MedMap - Connecting South African patients with verified medical professionals
-        </p>
-      </div>
-    `;
-
-    await this.sendEmail(email, 'Doctor Application Approved - IronLedger MedMap', html);
-  }
-
-  static async sendDoctorRejection(email: string, doctorName: string, reason?: string): Promise<void> {
-    const html = `
-      <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-        <h2 style="color: #dc2626;">Doctor Application Status Update</h2>
-        
-        <p>Dear Dr. ${doctorName},</p>
-        
-        <p>Thank you for your interest in joining IronLedger MedMap. After careful review, we are unable to approve your doctor application at this time.</p>
-        
-        ${reason ? `
-          <div style="background-color: #fef3f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
-            <strong>Reason:</strong> ${reason}
-          </div>
-        ` : ''}
-        
-        <p>If you have any questions about this decision or would like to submit additional documentation, please contact our support team.</p>
-        
-        <p style="margin-top: 30px; font-size: 14px; color: #666;">
-          We appreciate your interest in our platform and encourage you to reapply if your circumstances change.
-        </p>
-        
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-        
-        <p style="font-size: 12px; color: #9ca3af;">
-          IronLedger MedMap - Connecting South African patients with verified medical professionals
-        </p>
-      </div>
-    `;
-
-    await this.sendEmail(email, 'Doctor Application Update - IronLedger MedMap', html);
-  }
-
-  static async send2FACode(email: string, code: string): Promise<void> {
-    const html = `
-      <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-        <h2 style="color: #0d9488;">Two-Factor Authentication Code</h2>
-        
-        <p>Your two-factor authentication code for IronLedger MedMap:</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #0d9488; background-color: #f0fdfa; padding: 20px; border-radius: 8px; display: inline-block;">
-            ${code}
-          </div>
+        <div class="content">
+            <h1 class="welcome-title">Welcome to IronLedger MedMap, ${firstName}!</h1>
+            
+            <p class="welcome-text">
+                Thank you for joining South Africa's premier healthcare platform. We're excited to help you connect with verified medical professionals across all 9 provinces.
+            </p>
+            
+            <p class="welcome-text">
+                To complete your account setup and start booking appointments, please verify your email address:
+            </p>
+            
+            <div style="text-align: center;">
+                <a href="${verificationUrl}" class="btn">Verify My Email Address</a>
+            </div>
+            
+            <div class="features">
+                <h3 style="color: #1e293b; margin-bottom: 20px;">What you can do with IronLedger MedMap:</h3>
+                <div class="feature">
+                    <div class="feature-icon"></div>
+                    <span>Find and book appointments with verified doctors across South Africa</span>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon"></div>
+                    <span>Access emergency medical services and contact information</span>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon"></div>
+                    <span>Manage your appointments and medical history</span>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon"></div>
+                    <span>Choose from virtual or in-person consultations</span>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon"></div>
+                    <span>Secure payments with PayFast integration</span>
+                </div>
+            </div>
+            
+            <p class="welcome-text">
+                If you have any questions or need assistance, our support team is here to help. Welcome to better healthcare access!
+            </p>
         </div>
         
-        <p style="margin-top: 30px; font-size: 14px; color: #666;">
-          This code will expire in 5 minutes. If you didn't request this code, please ignore this email.
-        </p>
-        
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-        
-        <p style="font-size: 12px; color: #9ca3af;">
-          IronLedger MedMap - Connecting South African patients with verified medical professionals
-        </p>
-      </div>
-    `;
+        <div class="footer">
+            <p><strong>IronLedger MedMap</strong><br>
+            Empowering Healthcare Access Across South Africa</p>
+            <p style="margin-top: 20px; font-size: 12px;">
+                This email was sent to ${firstName} because you signed up for IronLedger MedMap.<br>
+                If you didn't create this account, please ignore this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
 
-    await this.sendEmail(email, 'Two-Factor Authentication Code - IronLedger MedMap', html);
+  private getWelcomeEmailText(firstName: string, verificationUrl: string): string {
+    return `
+Welcome to IronLedger MedMap, ${firstName}!
+
+Thank you for joining South Africa's premier healthcare platform. We're excited to help you connect with verified medical professionals across all 9 provinces.
+
+To complete your account setup and start booking appointments, please verify your email address by clicking this link:
+${verificationUrl}
+
+What you can do with IronLedger MedMap:
+• Find and book appointments with verified doctors across South Africa
+• Access emergency medical services and contact information
+• Manage your appointments and medical history
+• Choose from virtual or in-person consultations
+• Secure payments with PayFast integration
+
+If you have any questions or need assistance, our support team is here to help. Welcome to better healthcare access!
+
+IronLedger MedMap
+Empowering Healthcare Access Across South Africa
+
+This email was sent to ${firstName} because you signed up for IronLedger MedMap.
+If you didn't create this account, please ignore this email.
+`;
+  }
+
+  private getDoctorWelcomeTemplate(firstName: string, lastName: string): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Registration - IronLedger MedMap</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 40px 30px; text-align: center; }
+        .logo { font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+        .content { padding: 40px 30px; }
+        .title { font-size: 24px; color: #1e293b; margin-bottom: 20px; }
+        .text { font-size: 16px; color: #475569; margin-bottom: 20px; line-height: 1.8; }
+        .status-box { background-color: #fef3c7; border: 2px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .footer { background-color: #1e293b; color: #94a3b8; padding: 30px; text-align: center; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏥 IronLedger MedMap</div>
+            <div>Professional Healthcare Network</div>
+        </div>
+        
+        <div class="content">
+            <h1 class="title">Welcome Dr. ${firstName} ${lastName}!</h1>
+            
+            <p class="text">
+                Thank you for your interest in joining IronLedger MedMap's network of verified healthcare professionals. Your registration has been received and is currently under review.
+            </p>
+            
+            <div class="status-box">
+                <h3 style="color: #92400e; margin-top: 0;">📋 Application Status: Under Review</h3>
+                <p style="color: #92400e; margin-bottom: 0;">
+                    Our verification team will review your credentials and contact you within 2-3 business days with your approval status and next steps.
+                </p>
+            </div>
+            
+            <p class="text">
+                <strong>What happens next:</strong><br>
+                1. Our team will verify your medical credentials and HPCSA registration<br>
+                2. You'll receive an approval email with login instructions<br>
+                3. Access your doctor portal to manage appointments and schedule<br>
+                4. Start connecting with patients across South Africa
+            </p>
+            
+            <p class="text">
+                If you have any questions about the verification process, please contact our support team.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>IronLedger MedMap</strong><br>
+            Professional Healthcare Network</p>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
+  private getDoctorWelcomeText(firstName: string, lastName: string): string {
+    return `
+Welcome Dr. ${firstName} ${lastName}!
+
+Thank you for your interest in joining IronLedger MedMap's network of verified healthcare professionals. Your registration has been received and is currently under review.
+
+APPLICATION STATUS: Under Review
+Our verification team will review your credentials and contact you within 2-3 business days with your approval status and next steps.
+
+What happens next:
+1. Our team will verify your medical credentials and HPCSA registration
+2. You'll receive an approval email with login instructions
+3. Access your doctor portal to manage appointments and schedule
+4. Start connecting with patients across South Africa
+
+If you have any questions about the verification process, please contact our support team.
+
+IronLedger MedMap
+Professional Healthcare Network
+`;
+  }
+
+  private getVerificationEmailTemplate(firstName: string, verificationUrl: string): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email - IronLedger MedMap</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 40px 30px; text-align: center; }
+        .btn { display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+        .footer { background-color: #1e293b; color: #94a3b8; padding: 20px; text-align: center; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 IronLedger MedMap</h1>
+            <p>Verify Your Email Address</p>
+        </div>
+        
+        <div class="content">
+            <h2>Hi ${firstName},</h2>
+            <p>Please click the button below to verify your email address and activate your account:</p>
+            <a href="${verificationUrl}" class="btn">Verify Email Address</a>
+            <p style="margin-top: 30px; color: #666; font-size: 14px;">
+                This link will expire in 24 hours. If you didn't create this account, please ignore this email.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>IronLedger MedMap - Empowering Healthcare Access</p>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
+  private getVerificationEmailText(firstName: string, verificationUrl: string): string {
+    return `
+Hi ${firstName},
+
+Please click the link below to verify your email address and activate your IronLedger MedMap account:
+
+${verificationUrl}
+
+This link will expire in 24 hours. If you didn't create this account, please ignore this email.
+
+IronLedger MedMap - Empowering Healthcare Access
+`;
+  }
+
+  private getDoctorApprovalTemplate(firstName: string, lastName: string, loginUrl: string): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Approved - IronLedger MedMap</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 40px 30px; text-align: center; }
+        .content { padding: 40px 30px; }
+        .success-box { background-color: #d1fae5; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
+        .btn { display: inline-block; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+        .footer { background-color: #1e293b; color: #94a3b8; padding: 30px; text-align: center; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="font-size: 28px; font-weight: bold; margin-bottom: 10px;">🏥 IronLedger MedMap</div>
+            <div>Your Account is Approved!</div>
+        </div>
+        
+        <div class="content">
+            <div class="success-box">
+                <h2 style="color: #065f46; margin-top: 0;">✅ Congratulations Dr. ${firstName} ${lastName}!</h2>
+                <p style="color: #065f46; margin-bottom: 0;">
+                    Your doctor account has been verified and approved. You can now access your doctor portal.
+                </p>
+            </div>
+            
+            <p>Welcome to the IronLedger MedMap professional network! Your credentials have been verified and your account is now active.</p>
+            
+            <div style="text-align: center;">
+                <a href="${loginUrl}" class="btn">Access Doctor Portal</a>
+            </div>
+            
+            <p><strong>What you can do now:</strong></p>
+            <ul>
+                <li>Set up your practice schedule and availability</li>
+                <li>Manage patient appointments and bookings</li>
+                <li>Update your professional profile and consultation fees</li>
+                <li>Communicate with patients through the platform</li>
+                <li>Track your practice analytics and revenue</li>
+            </ul>
+            
+            <p>If you need assistance getting started, our support team is available to help.</p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>IronLedger MedMap</strong><br>
+            Professional Healthcare Network</p>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
+  private getDoctorApprovalText(firstName: string, lastName: string, loginUrl: string): string {
+    return `
+Congratulations Dr. ${firstName} ${lastName}!
+
+Your doctor account has been verified and approved. You can now access your doctor portal.
+
+Welcome to the IronLedger MedMap professional network! Your credentials have been verified and your account is now active.
+
+Access your doctor portal: ${loginUrl}
+
+What you can do now:
+• Set up your practice schedule and availability
+• Manage patient appointments and bookings
+• Update your professional profile and consultation fees
+• Communicate with patients through the platform
+• Track your practice analytics and revenue
+
+If you need assistance getting started, our support team is available to help.
+
+IronLedger MedMap
+Professional Healthcare Network
+`;
   }
 }
+
+export const emailService = new EmailService();

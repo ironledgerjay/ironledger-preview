@@ -31,6 +31,20 @@ export default function LoginNew() {
     twoFactorToken: '',
   });
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get('accessToken');
+    const role = params.get('role');
+    if (accessToken) {
+      try { localStorage.setItem('accessToken', accessToken); } catch {}
+      if (role === 'doctor') {
+        setLocation('/doctor-portal');
+      } else {
+        setLocation('/');
+      }
+    }
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     

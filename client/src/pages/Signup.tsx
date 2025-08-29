@@ -22,7 +22,7 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthNew } from '@/hooks/useAuthNew';
 import { useToast } from '@/hooks/use-toast';
 
 const provinces = [

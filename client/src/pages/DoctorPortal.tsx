@@ -119,18 +119,22 @@ export default function DoctorPortal() {
 
   const saveSchedule = async () => {
     try {
+      // Get the current doctor ID - for now using Dr. Michael's ID
+      const doctorId = 'doctor-michael-van-der-merwe';
+      
       const response = await fetch('/api/doctor/schedule', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ schedule }),
+        body: JSON.stringify({ schedule, doctorId }),
       });
 
       if (response.ok) {
+        console.log(`Schedule saved for ${doctorId}:`, schedule);
         toast({
           title: "Schedule Updated",
-          description: "Your availability schedule has been saved successfully.",
+          description: "Your availability schedule has been saved successfully and will be reflected in booking slots immediately.",
         });
         setShowScheduleModal(false);
       } else {

@@ -1402,11 +1402,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Removed duplicate doctor profile endpoint
 
-  // Doctor schedule management
+  // In-memory storage for doctor schedules (real-time updates)
+  const doctorSchedules = new Map();
+
+  // Doctor schedule management - Real-time with doctor-specific storage
   app.get("/api/doctor/schedule", async (req, res) => {
     try {
-      // Return default schedule structure for demo
-      const schedule = {
+      const { doctorId = 'doctor-michael-johnson' } = req.query;
+      
+      // Get stored schedule for this doctor or return default
+      const storedSchedule = doctorSchedules.get(doctorId);
+      
+      const defaultSchedule = {
         monday: { start: "09:00", end: "17:00", available: true },
         tuesday: { start: "09:00", end: "17:00", available: true },
         wednesday: { start: "09:00", end: "17:00", available: true },
@@ -1416,7 +1423,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sunday: { start: "09:00", end: "13:00", available: false }
       };
       
-      res.json(schedule);
+      console.log(`Fetching schedule for ${doctorId}:`, storedSchedule || defaultSchedule);
+      res.json(storedSchedule || defaultSchedule);
     } catch (error) {
       console.error("Error fetching doctor schedule:", error);
       res.status(500).json({ error: "Failed to fetch schedule" });
@@ -1425,10 +1433,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/doctor/schedule", async (req, res) => {
     try {
-      const { schedule } = req.body;
+      const { schedule, doctorId = 'doctor-michael-johnson' } = req.body;
       
-      // Store schedule in memory for demo (in real app, save to database)
-      global.doctorSchedule = schedule;
+      // Store schedule for specific doctor in memory (real-time)
+      doctorSchedules.set(doctorId, schedule);
+      console.log(`Schedule updated for ${doctorId}:`, schedule);
       
       // Log schedule update activity
       await storage.logActivity({
@@ -1437,26 +1446,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'schedule_updated',
         page: 'doctor_portal',
         details: {
+          doctorId,
           schedule: schedule,
           timestamp: new Date().toISOString(),
         },
         source: 'doctor_portal',
       });
       
-      res.json({ message: "Schedule updated successfully", schedule });
+      res.json({ message: "Schedule updated successfully", schedule, doctorId });
     } catch (error) {
       console.error("Error updating doctor schedule:", error);
       res.status(500).json({ error: "Failed to update schedule" });
     }
   });
 
-  // Get doctor's current schedule for booking
+  // Get doctor's current schedule for booking - Real-time from storage
   app.get("/api/doctors/:doctorId/schedule", async (req, res) => {
     try {
       const { doctorId } = req.params;
       
-      // Return default schedule for all doctors
-      const schedule = {
+      // Get the doctor's actual schedule (updated from portal)
+      const storedSchedule = doctorSchedules.get(doctorId);
+      
+      const defaultSchedule = {
         monday: { start: "09:00", end: "17:00", available: true },
         tuesday: { start: "09:00", end: "17:00", available: true },
         wednesday: { start: "09:00", end: "17:00", available: true },
@@ -1466,7 +1478,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sunday: { start: "09:00", end: "13:00", available: false }
       };
       
-      res.json(schedule);
+      const actualSchedule = storedSchedule || defaultSchedule;
+      console.log(`Booking schedule for ${doctorId}:`, actualSchedule);
+      
+      res.json(actualSchedule);
     } catch (error) {
       console.error("Error fetching doctor schedule:", error);
       res.status(500).json({ error: "Failed to fetch schedule" });
@@ -1498,8 +1513,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ availableSlots });
       }
       
-      // For database doctors or if no valid pattern, continue with existing logic
-      const schedule = {
+      // For database doctors, get their actual schedule from storage
+      const storedSchedule = doctorSchedules.get(doctorId);
+      
+      const defaultSchedule = {
         monday: { start: "09:00", end: "17:00", available: true },
         tuesday: { start: "09:00", end: "17:00", available: true },
         wednesday: { start: "09:00", end: "17:00", available: true },
@@ -1509,7 +1526,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sunday: { start: "09:00", end: "13:00", available: false }
       };
       
+      const schedule = storedSchedule || defaultSchedule;
       const daySchedule = schedule[dayName];
+      
+      console.log(`Using schedule for ${doctorId} on ${dayName}:`, daySchedule);
       
       if (!daySchedule || !daySchedule.available) {
         return res.json({ availableSlots: [] });

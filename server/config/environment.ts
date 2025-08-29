@@ -74,8 +74,14 @@ export const rateLimitConfig = {
 };
 
 export const corsConfig = {
-  origin: isProduction 
-    ? ['https://ironledgermedmap.com', 'https://www.ironledgermedmap.com']
+  origin: isProduction
+    ? [
+        'https://ironledgermedmap.site',
+        'https://www.ironledgermedmap.site',
+        'https://ironledgermedmap.com',
+        'https://www.ironledgermedmap.com',
+        'https://main--ironledgermedmap.netlify.app'
+      ]
     : ['http://localhost:3000', 'http://localhost:5000'],
   credentials: true,
 };

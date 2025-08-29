@@ -282,6 +282,25 @@ export default function AdminSimple() {
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 Live Updates Active
               </Badge>
+              <Button
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/admin/test-email?to=${encodeURIComponent('ironledgerjay@gmail.com')}`);
+                    const data = await res.json();
+                    if (data.success) {
+                      toast({ title: 'Test Email Sent', description: `Sent to ${data.to}` });
+                    } else {
+                      toast({ title: 'Test Email Failed', description: 'See server logs for details', variant: 'destructive' });
+                    }
+                  } catch (e) {
+                    toast({ title: 'Test Email Error', description: 'Request failed', variant: 'destructive' });
+                  }
+                }}
+                size="sm"
+                variant="secondary"
+              >
+                Send Test Email
+              </Button>
               <BackButton />
             </div>
           </div>

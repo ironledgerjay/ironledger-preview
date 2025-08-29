@@ -17,6 +17,7 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navigation = [
+    { name: 'Home', href: '/' },
     { name: 'Find Doctors', href: '/search' },
     { name: 'Emergency', href: '/emergency' },
     { name: 'About', href: '/about' },

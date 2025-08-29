@@ -27,7 +27,7 @@ import PaymentCancelled from "@/pages/PaymentCancelled";
 import VerificationPending from "@/pages/VerificationPending";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
-import Admin from "@/pages/Admin";
+import AdminSimple from "@/pages/AdminSimple";
 import NotFound from "@/pages/not-found";
 import BookAppointment from "@/pages/BookAppointment";
 import DoctorSignup from "@/pages/DoctorSignup";
@@ -56,7 +56,7 @@ function Router() {
       <Route path="/payment/cancelled" component={PaymentCancelled} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
-      <Route path="/admin" component={Admin} />
+      <Route path="/admin" component={AdminSimple} />
       <Route component={NotFound} />
     </Switch>
   );

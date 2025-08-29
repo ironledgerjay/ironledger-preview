@@ -87,6 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'doctor_registration',
           title: 'New Doctor Registration',
           message: `Dr. ${firstName} ${lastName} has registered and requires verification`,
+          source: 'main_site',
           targetSystem: 'admin_crm',
           metadata: JSON.stringify({
             doctorId: profile.id,
@@ -485,6 +486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'payment_completed',
           title: 'PayFast Payment Completed',
           message: `Payment of R${amount_gross} completed successfully via PayFast for ${custom_str1}.`,
+          source: 'payfast_system',
           targetSystem: 'main_site',
           metadata: JSON.stringify({
             paymentId: pf_payment_id,
@@ -508,6 +510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'payment_failed',
           title: 'PayFast Payment Failed',
           message: `Payment of R${amount_gross} failed via PayFast for ${custom_str1}.`,
+          source: 'payfast_system',
           targetSystem: 'main_site',
           metadata: JSON.stringify({
             paymentId: pf_payment_id,
@@ -746,6 +749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: isVerified 
           ? `Congratulations! Your doctor account has been approved and is now active.`
           : `Your doctor account requires additional information. Please check your email for details.`,
+        source: 'admin_crm',
         targetSystem: 'main_site',
         metadata: JSON.stringify({
           doctorId,
@@ -803,6 +807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'account_removed',
         title: 'User Account Removed',
         message: `User account ${user.email} (${user.role}) has been removed by admin for: ${reason || 'policy violation'}`,
+        source: 'admin_crm',
         targetSystem: 'admin_crm',
         metadata: JSON.stringify({
           userId,
@@ -900,6 +905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'doctor_enrolled',
         title: 'Doctor Manually Enrolled',
         message: `Dr. ${firstName} ${lastName} (${specialization}) has been enrolled directly by admin`,
+        source: 'admin_panel',
         targetSystem: 'admin_crm',
         metadata: JSON.stringify({
           doctorId: doctor.id,

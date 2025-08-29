@@ -51,7 +51,7 @@ interface Payment {
 
 export default function AdminSimple() {
   // Always call hooks at the top level
-  useActivityLogger('admin');
+  useActivityLogger();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   

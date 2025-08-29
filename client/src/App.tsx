@@ -31,6 +31,12 @@ import AdminSimple from "@/pages/AdminSimple";
 import NotFound from "@/pages/not-found";
 import BookAppointment from "@/pages/BookAppointment";
 import DoctorSignup from "@/pages/DoctorSignup";
+import PatientSignup from "@/pages/PatientSignup";
+import PatientDashboard from "@/pages/PatientDashboard";
+import DoctorPortalEnhanced from "@/pages/DoctorPortalEnhanced";
+import BookingWizard from "@/pages/BookingWizard";
+import EnhancedDoctorSearch from "@/pages/EnhancedDoctorSearch";
+import PaymentIntegration from "@/pages/PaymentIntegration";
 
 function Router() {
   return (
@@ -43,7 +49,13 @@ function Router() {
       <Route path="/doctors" component={DoctorSearch} />
       <Route path="/doctor-portal" component={DoctorPortal} />
       <Route path="/doctor-signup" component={DoctorSignup} />
+      <Route path="/patient-signup" component={PatientSignup} />
+      <Route path="/patient-dashboard" component={PatientDashboard} />
+      <Route path="/doctor-portal-enhanced" component={DoctorPortalEnhanced} />
       <Route path="/book-appointment/:doctorId" component={BookAppointment} />
+      <Route path="/booking-wizard/:doctorId" component={BookingWizard} />
+      <Route path="/enhanced-search" component={EnhancedDoctorSearch} />
+      <Route path="/payment-integration" component={PaymentIntegration} />
       <Route path="/emergency" component={Emergency} />
       <Route path="/login" component={Login} />
       <Route path="/login-new" component={LoginNew} />

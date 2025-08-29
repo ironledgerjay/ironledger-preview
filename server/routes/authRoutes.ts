@@ -7,6 +7,9 @@ import { db } from '../storage';
 import { users, doctors, patients } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import rateLimit from 'express-rate-limit';
+import { Issuer, generators } from 'openid-client';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const router = Router();
 

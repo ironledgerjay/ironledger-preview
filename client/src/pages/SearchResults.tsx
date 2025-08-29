@@ -45,84 +45,7 @@ const specialties = [
   'Ophthalmology',
 ];
 
-// Mock doctors data - in real app, this would come from API
-const mockDoctors = [
-  {
-    id: '1',
-    firstName: 'Sarah',
-    lastName: 'Mthembu',
-    specialty: 'Cardiology',
-    province: 'Gauteng',
-    city: 'Johannesburg',
-    rating: 5.0,
-    reviewCount: 127,
-    isVerified: true,
-    availableToday: true,
-    imageUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-4.0.3&w=300&h=300&fit=crop',
-  },
-  {
-    id: '2',
-    firstName: 'Michael',
-    lastName: 'Van Der Merwe',
-    specialty: 'General Practice',
-    province: 'Western Cape',
-    city: 'Cape Town',
-    rating: 4.5,
-    reviewCount: 89,
-    isVerified: true,
-    availableToday: true,
-    imageUrl: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-4.0.3&w=300&h=300&fit=crop',
-  },
-  {
-    id: '3',
-    firstName: 'Nomsa',
-    lastName: 'Dlamini',
-    specialty: 'Pediatrics',
-    province: 'KwaZulu-Natal',
-    city: 'Durban',
-    rating: 5.0,
-    reviewCount: 156,
-    isVerified: true,
-    availableToday: false,
-    imageUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-4.0.3&w=300&h=300&fit=crop',
-  },
-  {
-    id: '4',
-    firstName: 'David',
-    lastName: 'Coetzee',
-    specialty: 'Dermatology',
-    province: 'Western Cape',
-    city: 'Stellenbosch',
-    rating: 4.8,
-    reviewCount: 73,
-    isVerified: true,
-    availableToday: true,
-  },
-  {
-    id: '5',
-    firstName: 'Thandiwe',
-    lastName: 'Mbeki',
-    specialty: 'Gynecology',
-    province: 'Gauteng',
-    city: 'Pretoria',
-    rating: 4.9,
-    reviewCount: 92,
-    isVerified: true,
-    availableToday: true,
-  },
-  {
-    id: '6',
-    firstName: 'Johan',
-    lastName: 'Steyn',
-    specialty: 'Orthopedics',
-    province: 'Free State',
-    city: 'Bloemfontein',
-    rating: 4.7,
-    reviewCount: 64,
-    isVerified: true,
-    availableToday: false,
-  },
-];
+// Real doctors will be fetched from API
 
 export default function SearchResults() {
   usePageTracking('Search Results');
@@ -131,7 +54,20 @@ export default function SearchResults() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
-  const [filteredDoctors, setFilteredDoctors] = useState(mockDoctors);
+  const [filteredDoctors, setFilteredDoctors] = useState([]);
+
+  // Fetch all doctors from API
+  const { data: doctors, isLoading: doctorsLoading } = useQuery({
+    queryKey: ['/api/doctors'],
+    retry: 1,
+  });
+
+  // Convert doctors to proper format
+  const allDoctors = (doctors || []).map((doctor: any) => ({
+    ...doctor,
+    rating: parseFloat(doctor.rating) || 5.0,
+    availableToday: true,
+  }));
 
   // Get search params from URL
   useEffect(() => {
@@ -145,7 +81,7 @@ export default function SearchResults() {
 
   // Filter doctors based on search criteria
   useEffect(() => {
-    let filtered = mockDoctors;
+    let filtered = allDoctors;
 
     if (searchQuery) {
       filtered = filtered.filter(doctor => 
@@ -164,11 +100,11 @@ export default function SearchResults() {
     }
 
     setFilteredDoctors(filtered);
-  }, [searchQuery, selectedProvince, selectedSpecialty]);
+  }, [searchQuery, selectedProvince, selectedSpecialty, allDoctors]);
 
   const handleBookAppointment = (doctorId: string) => {
     logUserAction('book_appointment_click', 'Search Results', { doctorId });
-    setLocation(`/book-appointment?doctor=${doctorId}`);
+    setLocation(`/book-appointment/${doctorId}`);
   };
 
   const clearFilters = () => {

@@ -33,48 +33,7 @@ import {
   Clock
 } from 'lucide-react';
 
-// Mock featured doctors data
-const featuredDoctors = [
-  {
-    id: '1',
-    firstName: 'Sarah',
-    lastName: 'Mthembu',
-    specialty: 'Cardiologist',
-    province: 'Gauteng',
-    city: 'Johannesburg',
-    rating: 5.0,
-    reviewCount: 127,
-    isVerified: true,
-    availableToday: true,
-    imageUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-4.0.3&w=300&h=300&fit=crop',
-  },
-  {
-    id: '2',
-    firstName: 'Michael',
-    lastName: 'Van Der Merwe',
-    specialty: 'General Practitioner',
-    province: 'Western Cape',
-    city: 'Cape Town',
-    rating: 4.5,
-    reviewCount: 89,
-    isVerified: true,
-    availableToday: true,
-    imageUrl: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-4.0.3&w=300&h=300&fit=crop',
-  },
-  {
-    id: '3',
-    firstName: 'Nomsa',
-    lastName: 'Dlamini',
-    specialty: 'Pediatrician',
-    province: 'KwaZulu-Natal',
-    city: 'Durban',
-    rating: 5.0,
-    reviewCount: 156,
-    isVerified: true,
-    availableToday: false,
-    imageUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-4.0.3&w=300&h=300&fit=crop',
-  },
-];
+// Featured doctors will be fetched from API
 
 const testimonials = [
   {
@@ -142,6 +101,19 @@ export default function Index() {
   const { data: stats } = useQuery<PlatformStats>({
     queryKey: ['/api/stats'],
   });
+
+  // Fetch featured doctors from API
+  const { data: doctors, isLoading: doctorsLoading } = useQuery({
+    queryKey: ['/api/doctors'],
+    retry: 1,
+  });
+
+  // Get first 3 doctors as featured
+  const featuredDoctors = (doctors || []).slice(0, 3).map((doctor: any) => ({
+    ...doctor,
+    rating: parseFloat(doctor.rating) || 5.0,
+    availableToday: true,
+  }));
 
   const handleQuickSearch = () => {
     const searchParams = new URLSearchParams();
@@ -357,13 +329,25 @@ export default function Index() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredDoctors.map((doctor) => (
-              <DoctorCard
-                key={doctor.id}
-                doctor={doctor}
-                onBookAppointment={handleBookAppointment}
-              />
-            ))}
+            {doctorsLoading ? (
+              // Loading skeletons
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-lg shadow-lg p-6 animate-pulse">
+                  <div className="w-20 h-20 bg-gray-300 rounded-full mx-auto mb-4"></div>
+                  <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-300 rounded mb-4"></div>
+                  <div className="h-8 bg-gray-300 rounded"></div>
+                </div>
+              ))
+            ) : (
+              featuredDoctors.map((doctor: any) => (
+                <DoctorCard
+                  key={doctor.id}
+                  doctor={doctor}
+                  onBookAppointment={handleBookAppointment}
+                />
+              ))
+            )}
           </div>
         </div>
       </section>

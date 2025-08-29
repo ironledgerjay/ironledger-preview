@@ -1,0 +1,773 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IronLedger MedMap - South African Medical Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            borderRadius: {
+              lg: "var(--radius)",
+              md: "calc(var(--radius) - 2px)", 
+              sm: "calc(var(--radius) - 4px)",
+            },
+            colors: {
+              background: "var(--background)",
+              foreground: "var(--foreground)",
+              card: {
+                DEFAULT: "var(--card)",
+                foreground: "var(--card-foreground)",
+              },
+              popover: {
+                DEFAULT: "var(--popover)",
+                foreground: "var(--popover-foreground)",
+              },
+              primary: {
+                DEFAULT: "var(--primary)",
+                foreground: "var(--primary-foreground)",
+              },
+              secondary: {
+                DEFAULT: "var(--secondary)",
+                foreground: "var(--secondary-foreground)",
+              },
+              muted: {
+                DEFAULT: "var(--muted)",
+                foreground: "var(--muted-foreground)",
+              },
+              accent: {
+                DEFAULT: "var(--accent)",
+                foreground: "var(--accent-foreground)",
+              },
+              destructive: {
+                DEFAULT: "var(--destructive)",
+                foreground: "var(--destructive-foreground)",
+              },
+              border: "var(--border)",
+              input: "var(--input)",
+              ring: "var(--ring)",
+            },
+            fontFamily: {
+              sans: ["var(--font-sans)"],
+            }
+          },
+        }
+      };
+    </script>
+    <script src="https://kit.fontawesome.com/your-kit-id.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --background: hsl(0 0% 100%);
+        --foreground: hsl(222.2 84% 4.9%);
+        --card: hsl(0 0% 100%);
+        --card-foreground: hsl(222.2 84% 4.9%);
+        --popover: hsl(0 0% 100%);
+        --popover-foreground: hsl(222.2 84% 4.9%);
+        --primary: hsl(172 83% 29%);
+        --primary-foreground: hsl(0 0% 100%);
+        --secondary: hsl(208 77% 47%);
+        --secondary-foreground: hsl(0 0% 100%);
+        --muted: hsl(210 40% 96%);
+        --muted-foreground: hsl(215.4 16.3% 46.9%);
+        --accent: hsl(43 89% 58%);
+        --accent-foreground: hsl(0 0% 100%);
+        --destructive: hsl(0 84.2% 60.2%);
+        --destructive-foreground: hsl(0 0% 100%);
+        --border: hsl(214.3 31.8% 91.4%);
+        --input: hsl(214.3 31.8% 91.4%);
+        --ring: hsl(172 83% 29%);
+        --radius: 0.75rem;
+        --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      }
+
+      .dark {
+        --background: hsl(222.2 84% 4.9%);
+        --foreground: hsl(210 40% 98%);
+        --card: hsl(222.2 84% 4.9%);
+        --card-foreground: hsl(210 40% 98%);
+        --popover: hsl(222.2 84% 4.9%);
+        --popover-foreground: hsl(210 40% 98%);
+        --primary: hsl(172 83% 29%);
+        --primary-foreground: hsl(222.2 84% 4.9%);
+        --secondary: hsl(217.2 32.6% 17.5%);
+        --secondary-foreground: hsl(210 40% 98%);
+        --muted: hsl(217.2 32.6% 17.5%);
+        --muted-foreground: hsl(215 20.2% 65.1%);
+        --accent: hsl(217.2 32.6% 17.5%);
+        --accent-foreground: hsl(210 40% 98%);
+        --destructive: hsl(0 62.8% 30.6%);
+        --destructive-foreground: hsl(210 40% 98%);
+        --border: hsl(217.2 32.6% 17.5%);
+        --input: hsl(217.2 32.6% 17.5%);
+        --ring: hsl(212.7 26.8% 83.9%);
+      }
+
+      body {
+        font-family: var(--font-sans);
+      }
+
+      .gradient-hero {
+        background: linear-gradient(135deg, hsl(172 83% 29%) 0%, hsl(208 77% 47%) 100%);
+      }
+
+      .doctor-card {
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+      }
+
+      .doctor-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-color: hsl(172 83% 29%);
+      }
+
+      .booking-step {
+        opacity: 0.3;
+        transform: scale(0.95);
+        transition: all 0.3s ease;
+      }
+
+      .booking-step.active {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      .floating-action {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 50;
+      }
+
+      @media (max-width: 768px) {
+        .floating-action {
+          bottom: 80px;
+        }
+      }
+    </style>
+</head>
+
+<body class="bg-background text-foreground">
+  <!-- @COMPONENT: Navigation Header -->
+  <nav class="bg-card shadow-sm border-b border-border sticky top-0 z-40">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <!-- @COMPONENT: Logo -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <i class="fas fa-heartbeat text-primary-foreground text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-foreground">IronLedger</h1>
+            <p class="text-xs text-muted-foreground -mt-1">MedMap</p>
+          </div>
+        </div>
+
+        <!-- Desktop Navigation -->
+        <div class="hidden md:flex items-center space-x-8">
+          <a href="#" class="text-foreground hover:text-primary transition-colors">Find Doctors</a>
+          <a href="#" class="text-foreground hover:text-primary transition-colors">About</a>
+          <a href="#" class="text-foreground hover:text-primary transition-colors">Contact</a>
+          <a href="#" class="text-foreground hover:text-primary transition-colors">Emergency</a>
+        </div>
+
+        <!-- Auth Buttons -->
+        <div class="hidden md:flex items-center space-x-4">
+          <button class="bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/90 transition-colors">
+            Login
+          </button>
+          <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors">
+            Sign Up
+          </button>
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button class="md:hidden">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+  <!-- @END_COMPONENT: Navigation Header -->
+
+  <!-- @COMPONENT: Hero Section -->
+  <section class="gradient-hero text-primary-foreground py-20 lg:py-32">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div class="space-y-8">
+          <div class="space-y-4">
+            <h1 class="text-4xl lg:text-6xl font-bold leading-tight">
+              Your Health,
+              <span class="text-accent">Our Priority</span>
+            </h1>
+            <p class="text-xl lg:text-2xl text-primary-foreground/90 leading-relaxed">
+              Connect with qualified South African doctors. Book appointments instantly. Access emergency care 24/7.
+            </p>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="bg-card p-6 rounded-xl shadow-xl">
+            <h3 class="text-lg font-semibold text-foreground mb-4">Find a Doctor Near You</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="space-y-2">
+                <label class="text-sm font-medium text-muted-foreground">Specialization</label>
+                <select class="w-full px-4 py-3 rounded-md border border-input bg-background text-foreground">
+                  <option>General Practice</option>
+                  <option>Cardiology</option>
+                  <option>Pediatrics</option>
+                  <option>Neurology</option>
+                  <option>Emergency Medicine</option>
+                </select>
+              </div>
+              <div class="space-y-2">
+                <label class="text-sm font-medium text-muted-foreground">Province</label>
+                <select class="w-full px-4 py-3 rounded-md border border-input bg-background text-foreground">
+                  <option>Western Cape</option>
+                  <option>Gauteng</option>
+                  <option>KwaZulu-Natal</option>
+                  <option>Eastern Cape</option>
+                  <option>Limpopo</option>
+                </select>
+              </div>
+              <div class="space-y-2">
+                <label class="text-sm font-medium text-muted-foreground">City</label>
+                <input type="text" placeholder="Cape Town" class="w-full px-4 py-3 rounded-md border border-input bg-background text-foreground">
+              </div>
+            </div>
+            <button class="w-full mt-4 bg-primary text-primary-foreground py-3 px-6 rounded-md hover:bg-primary/90 transition-colors font-semibold">
+              <i class="fas fa-search mr-2"></i>
+              Search Doctors
+            </button>
+          </div>
+
+          <!-- Quick Stats -->
+          <div class="grid grid-cols-3 gap-6">
+            <div class="text-center">
+              <div class="text-3xl font-bold text-accent">2,500+</div>
+              <div class="text-sm text-primary-foreground/80">Verified Doctors</div>
+            </div>
+            <div class="text-center">
+              <div class="text-3xl font-bold text-accent">50,000+</div>
+              <div class="text-sm text-primary-foreground/80">Happy Patients</div>
+            </div>
+            <div class="text-center">
+              <div class="text-3xl font-bold text-accent">24/7</div>
+              <div class="text-sm text-primary-foreground/80">Emergency Care</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hero Image -->
+        <div class="lg:order-last">
+          <!-- Professional South African doctor in medical scrubs -->
+          <img src="https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600" 
+               alt="Professional South African doctor in medical environment" 
+               class="rounded-2xl shadow-2xl w-full h-auto">
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- @END_COMPONENT: Hero Section -->
+
+  <!-- @COMPONENT: Featured Doctors Section -->
+  <section class="py-20 bg-muted/30">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl lg:text-4xl font-bold text-foreground mb-4">
+          Featured Doctors
+        </h2>
+        <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
+          Connect with our top-rated medical professionals across South Africa
+        </p>
+      </div>
+
+      <!-- @MAP: featuredDoctors.map(doctor => ( -->
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="doctor-card bg-card rounded-xl p-6 shadow-lg">
+          <div class="flex items-start space-x-4 mb-4">
+            <!-- Professional female doctor headshot -->
+            <img src="https://pixabay.com/get/gb90b560fa4bc98bcf4a8167f2d15d555a361fe3288dae0d06a527f6f082b52a3ddfd0cb7aeee406ca2e1117edb7915a17937c06d8e53bb038a11702465f85297_1280.jpg" 
+                 alt="Dr. Sarah Williams - General Practitioner" 
+                 class="w-16 h-16 rounded-full object-cover">
+            <div class="flex-1">
+              <h3 class="font-semibold text-lg text-card-foreground" data-bind="doctor.name">Dr. Sarah Williams</h3>
+              <p class="text-muted-foreground" data-bind="doctor.specialization">General Practice</p>
+              <p class="text-sm text-muted-foreground" data-bind="doctor.location">Cape Town, Western Cape</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center mb-4">
+            <div class="flex text-accent">
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+            </div>
+            <span class="ml-2 text-sm text-muted-foreground">4.9 (127 reviews)</span>
+          </div>
+
+          <div class="space-y-2 mb-4">
+            <div class="flex items-center text-sm text-muted-foreground">
+              <i class="fas fa-calendar-check w-4 text-primary"></i>
+              <span class="ml-2">Available today</span>
+            </div>
+            <div class="flex items-center text-sm text-muted-foreground">
+              <i class="fas fa-clock w-4 text-primary"></i>
+              <span class="ml-2">Next: 2:00 PM</span>
+            </div>
+            <div class="flex items-center text-sm text-muted-foreground">
+              <i class="fas fa-money-bill-wave w-4 text-primary"></i>
+              <span class="ml-2">R350 consultation</span>
+            </div>
+          </div>
+
+          <button class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors">
+            Book Appointment
+          </button>
+        </div>
+
+        <div class="doctor-card bg-card rounded-xl p-6 shadow-lg">
+          <div class="flex items-start space-x-4 mb-4">
+            <!-- Professional male cardiologist -->
+            <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150" 
+                 alt="Dr. Michael Johnson - Cardiologist" 
+                 class="w-16 h-16 rounded-full object-cover">
+            <div class="flex-1">
+              <h3 class="font-semibold text-lg text-card-foreground">Dr. Michael Johnson</h3>
+              <p class="text-muted-foreground">Cardiology</p>
+              <p class="text-sm text-muted-foreground">Johannesburg, Gauteng</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center mb-4">
+            <div class="flex text-accent">
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star-half-alt"></i>
+            </div>
+            <span class="ml-2 text-sm text-muted-foreground">4.8 (89 reviews)</span>
+          </div>
+
+          <div class="space-y-2 mb-4">
+            <div class="flex items-center text-sm text-muted-foreground">
+              <i class="fas fa-calendar-check w-4 text-primary"></i>
+              <span class="ml-2">Available tomorrow</span>
+            </div>
+            <div class="flex items-center text-sm text-muted-foreground">
+              <i class="fas fa-clock w-4 text-primary"></i>
+              <span class="ml-2">Next: 9:00 AM</span>
+            </div>
+            <div class="flex items-center text-sm text-muted-foreground">
+              <i class="fas fa-money-bill-wave w-4 text-primary"></i>
+              <span class="ml-2">R450 consultation</span>
+            </div>
+          </div>
+
+          <button class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors">
+            Book Appointment
+          </button>
+        </div>
+
+        <div class="doctor-card bg-card rounded-xl p-6 shadow-lg">
+          <div class="flex items-start space-x-4 mb-4">
+            <!-- Professional pediatrician -->
+            <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150" 
+                 alt="Dr. Amara Ndaba - Pediatrician" 
+                 class="w-16 h-16 rounded-full object-cover">
+            <div class="flex-1">
+              <h3 class="font-semibold text-lg text-card-foreground">Dr. Amara Ndaba</h3>
+              <p class="text-muted-foreground">Pediatrics</p>
+              <p class="text-sm text-muted-foreground">Durban, KwaZulu-Natal</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center mb-4">
+            <div class="flex text-accent">
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+            </div>
+            <span class="ml-2 text-sm text-muted-foreground">5.0 (156 reviews)</span>
+          </div>
+
+          <div class="space-y-2 mb-4">
+            <div class="flex items-center text-sm text-muted-foreground">
+              <i class="fas fa-calendar-check w-4 text-primary"></i>
+              <span class="ml-2">Available today</span>
+            </div>
+            <div class="flex items-center text-sm text-muted-foreground">
+              <i class="fas fa-clock w-4 text-primary"></i>
+              <span class="ml-2">Next: 10:30 AM</span>
+            </div>
+            <div class="flex items-center text-sm text-muted-foreground">
+              <i class="fas fa-money-bill-wave w-4 text-primary"></i>
+              <span class="ml-2">R300 consultation</span>
+            </div>
+          </div>
+
+          <button class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors">
+            Book Appointment
+          </button>
+        </div>
+      </div>
+      <!-- @END_MAP -->
+
+      <div class="text-center mt-12">
+        <button class="bg-secondary text-secondary-foreground px-8 py-3 rounded-md hover:bg-secondary/90 transition-colors">
+          View All Doctors
+        </button>
+      </div>
+    </div>
+  </section>
+  <!-- @END_COMPONENT: Featured Doctors Section -->
+
+  <!-- @COMPONENT: Membership Plans Section -->
+  <section class="py-20 bg-background">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl lg:text-4xl font-bold text-foreground mb-4">
+          Choose Your Plan
+        </h2>
+        <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
+          Access healthcare that fits your needs and budget
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <!-- Basic Plan -->
+        <div class="bg-card border border-border rounded-xl p-8 text-center shadow-lg">
+          <div class="mb-6">
+            <h3 class="text-2xl font-bold text-card-foreground mb-2">Basic Plan</h3>
+            <div class="text-4xl font-bold text-primary">Free</div>
+            <p class="text-muted-foreground">Always free to use</p>
+          </div>
+
+          <div class="space-y-4 mb-8">
+            <div class="flex items-center">
+              <i class="fas fa-check text-primary w-5"></i>
+              <span class="ml-3 text-card-foreground">Browse and search doctors</span>
+            </div>
+            <div class="flex items-center">
+              <i class="fas fa-check text-primary w-5"></i>
+              <span class="ml-3 text-card-foreground">View doctor profiles</span>
+            </div>
+            <div class="flex items-center">
+              <i class="fas fa-check text-primary w-5"></i>
+              <span class="ml-3 text-card-foreground">R10 booking convenience fee</span>
+            </div>
+            <div class="flex items-center">
+              <i class="fas fa-check text-primary w-5"></i>
+              <span class="ml-3 text-card-foreground">24/7 emergency contacts</span>
+            </div>
+          </div>
+
+          <button class="w-full bg-muted text-muted-foreground py-3 px-6 rounded-md cursor-not-allowed">
+            Current Plan
+          </button>
+        </div>
+
+        <!-- Premium Plan -->
+        <div class="bg-primary text-primary-foreground rounded-xl p-8 text-center shadow-xl relative">
+          <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-accent text-accent-foreground px-4 py-1 rounded-full text-sm font-semibold">
+            Most Popular
+          </div>
+          
+          <div class="mb-6">
+            <h3 class="text-2xl font-bold mb-2">Premium Plan</h3>
+            <div class="text-4xl font-bold">R39</div>
+            <p class="text-primary-foreground/80">per quarter</p>
+          </div>
+
+          <div class="space-y-4 mb-8">
+            <div class="flex items-center">
+              <i class="fas fa-check text-accent w-5"></i>
+              <span class="ml-3">Everything in Basic</span>
+            </div>
+            <div class="flex items-center">
+              <i class="fas fa-check text-accent w-5"></i>
+              <span class="ml-3">5 free bookings per quarter</span>
+            </div>
+            <div class="flex items-center">
+              <i class="fas fa-check text-accent w-5"></i>
+              <span class="ml-3">Priority booking slots</span>
+            </div>
+            <div class="flex items-center">
+              <i class="fas fa-check text-accent w-5"></i>
+              <span class="ml-3">Appointment reminders</span>
+            </div>
+            <div class="flex items-center">
+              <i class="fas fa-check text-accent w-5"></i>
+              <span class="ml-3">Medical history storage</span>
+            </div>
+          </div>
+
+          <button class="w-full bg-accent text-accent-foreground py-3 px-6 rounded-md hover:bg-accent/90 transition-colors font-semibold">
+            Upgrade Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- @END_COMPONENT: Membership Plans Section -->
+
+  <!-- @COMPONENT: How It Works Section -->
+  <section class="py-20 bg-muted/30">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl lg:text-4xl font-bold text-foreground mb-4">
+          How It Works
+        </h2>
+        <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
+          Simple steps to connect with healthcare professionals
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="booking-step active text-center">
+          <div class="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
+            <i class="fas fa-search text-2xl text-primary-foreground"></i>
+          </div>
+          <h3 class="text-xl font-semibold text-foreground mb-4">1. Search & Filter</h3>
+          <p class="text-muted-foreground">
+            Find doctors by specialization, location, availability, and patient reviews in your area.
+          </p>
+        </div>
+
+        <div class="booking-step text-center">
+          <div class="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
+            <i class="fas fa-calendar-plus text-2xl text-secondary-foreground"></i>
+          </div>
+          <h3 class="text-xl font-semibold text-foreground mb-4">2. Book Appointment</h3>
+          <p class="text-muted-foreground">
+            Select your preferred time slot and complete the booking with secure payment processing.
+          </p>
+        </div>
+
+        <div class="booking-step text-center">
+          <div class="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-6">
+            <i class="fas fa-user-md text-2xl text-accent-foreground"></i>
+          </div>
+          <h3 class="text-xl font-semibold text-foreground mb-4">3. Meet Your Doctor</h3>
+          <p class="text-muted-foreground">
+            Receive appointment confirmations and attend your consultation with verified healthcare providers.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- @END_COMPONENT: How It Works Section -->
+
+  <!-- @COMPONENT: Emergency Services Section -->
+  <section class="py-20 bg-destructive text-destructive-foreground">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <div class="w-16 h-16 bg-destructive-foreground/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <i class="fas fa-ambulance text-3xl"></i>
+        </div>
+        <h2 class="text-3xl lg:text-4xl font-bold mb-4">
+          Emergency Services
+        </h2>
+        <p class="text-lg text-destructive-foreground/90 max-w-2xl mx-auto">
+          24/7 emergency healthcare access across South Africa
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="bg-destructive-foreground/10 rounded-xl p-6 text-center">
+          <i class="fas fa-phone-alt text-3xl mb-4"></i>
+          <h3 class="text-xl font-semibold mb-4">Emergency Hotline</h3>
+          <p class="text-destructive-foreground/90 mb-4">
+            Direct access to emergency medical services
+          </p>
+          <div class="text-2xl font-bold">10177</div>
+        </div>
+
+        <div class="bg-destructive-foreground/10 rounded-xl p-6 text-center">
+          <i class="fas fa-hospital text-3xl mb-4"></i>
+          <h3 class="text-xl font-semibold mb-4">Nearest Hospitals</h3>
+          <p class="text-destructive-foreground/90 mb-4">
+            Find the closest emergency room to your location
+          </p>
+          <button class="bg-destructive-foreground text-destructive px-4 py-2 rounded-md hover:bg-destructive-foreground/90 transition-colors">
+            Find Hospital
+          </button>
+        </div>
+
+        <div class="bg-destructive-foreground/10 rounded-xl p-6 text-center">
+          <i class="fas fa-user-md text-3xl mb-4"></i>
+          <h3 class="text-xl font-semibold mb-4">On-Call Doctors</h3>
+          <p class="text-destructive-foreground/90 mb-4">
+            Emergency consultations available now
+          </p>
+          <button class="bg-destructive-foreground text-destructive px-4 py-2 rounded-md hover:bg-destructive-foreground/90 transition-colors">
+            Call Doctor
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- @END_COMPONENT: Emergency Services Section -->
+
+  <!-- @COMPONENT: Mobile App CTA Section -->
+  <section class="py-20 bg-gradient-to-r from-primary to-secondary text-primary-foreground">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <h2 class="text-3xl lg:text-4xl font-bold mb-6">
+            Healthcare in Your Pocket
+          </h2>
+          <p class="text-xl text-primary-foreground/90 mb-8">
+            Download the IronLedger MedMap mobile app for convenient healthcare access on the go. Book appointments, manage your health records, and connect with doctors anywhere in South Africa.
+          </p>
+          
+          <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+            <a href="#" class="bg-card text-card-foreground px-6 py-3 rounded-md hover:bg-card/90 transition-colors flex items-center justify-center">
+              <i class="fab fa-apple text-xl mr-2"></i>
+              Download for iOS
+            </a>
+            <a href="#" class="bg-card text-card-foreground px-6 py-3 rounded-md hover:bg-card/90 transition-colors flex items-center justify-center">
+              <i class="fab fa-google-play text-xl mr-2"></i>
+              Download for Android
+            </a>
+          </div>
+        </div>
+
+        <div class="lg:order-last">
+          <!-- Mobile app mockup showing the medical platform interface -->
+          <img src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" 
+               alt="Mobile app interface showing medical booking system" 
+               class="rounded-2xl shadow-2xl w-full h-auto">
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- @END_COMPONENT: Mobile App CTA Section -->
+
+  <!-- @COMPONENT: Footer -->
+  <footer class="bg-foreground text-background py-16">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid md:grid-cols-4 gap-8 mb-8">
+        <div>
+          <div class="flex items-center space-x-3 mb-6">
+            <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+              <i class="fas fa-heartbeat text-primary-foreground text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold">IronLedger</h3>
+              <p class="text-sm text-background/70 -mt-1">MedMap</p>
+            </div>
+          </div>
+          <p class="text-background/80">
+            Connecting South Africans with quality healthcare professionals since 2024.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="font-semibold mb-4">For Patients</h4>
+          <div class="space-y-2">
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Find Doctors</a>
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Book Appointment</a>
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Emergency Services</a>
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Health Records</a>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-semibold mb-4">For Doctors</h4>
+          <div class="space-y-2">
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Join Network</a>
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Doctor Portal</a>
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Practice Management</a>
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Verification</a>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-semibold mb-4">Support</h4>
+          <div class="space-y-2">
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Help Center</a>
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Contact Us</a>
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Privacy Policy</a>
+            <a href="#" class="block text-background/80 hover:text-background transition-colors">Terms of Service</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-background/20 pt-8">
+        <div class="flex flex-col md:flex-row justify-between items-center">
+          <p class="text-background/60 text-sm">
+            © 2024 IronLedger MedMap. All rights reserved. Licensed healthcare platform in South Africa.
+          </p>
+          <div class="flex space-x-4 mt-4 md:mt-0">
+            <a href="#" class="text-background/60 hover:text-background transition-colors">
+              <i class="fab fa-facebook text-xl"></i>
+            </a>
+            <a href="#" class="text-background/60 hover:text-background transition-colors">
+              <i class="fab fa-twitter text-xl"></i>
+            </a>
+            <a href="#" class="text-background/60 hover:text-background transition-colors">
+              <i class="fab fa-linkedin text-xl"></i>
+            </a>
+            <a href="#" class="text-background/60 hover:text-background transition-colors">
+              <i class="fab fa-instagram text-xl"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <!-- @END_COMPONENT: Footer -->
+
+  <!-- @COMPONENT: Floating Emergency Button -->
+  <div class="floating-action">
+    <button class="bg-destructive text-destructive-foreground w-14 h-14 rounded-full shadow-xl hover:bg-destructive/90 transition-all hover:scale-110 flex items-center justify-center">
+      <i class="fas fa-ambulance text-xl"></i>
+    </button>
+  </div>
+  <!-- @END_COMPONENT: Floating Emergency Button -->
+
+  <script>
+    (function() {
+      // TODO: Implement booking step animations
+      // TODO: Implement mobile menu functionality  
+      // TODO: Implement search functionality
+      // TODO: Implement doctor filtering
+      // TODO: Implement appointment booking flow
+      // TODO: Implement payment processing
+      // TODO: Implement emergency services integration
+      
+      // Simulate booking step progression
+      const bookingSteps = document.querySelectorAll('.booking-step');
+      let currentStep = 0;
+      
+      function activateStep(index) {
+        bookingSteps.forEach((step, i) => {
+          if (i <= index) {
+            step.classList.add('active');
+          } else {
+            step.classList.remove('active');
+          }
+        });
+      }
+      
+      // Demo step progression every 3 seconds
+      setInterval(() => {
+        currentStep = (currentStep + 1) % bookingSteps.length;
+        activateStep(currentStep);
+      }, 3000);
+      
+      // TODO: Implement real-time doctor availability updates
+      // TODO: Implement notification system for appointments
+      // TODO: Implement user authentication state management
+      // TODO: Implement responsive mobile navigation
+    })();
+  </script>
+</body>
+</html>
